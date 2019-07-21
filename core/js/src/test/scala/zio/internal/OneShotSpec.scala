@@ -1,45 +1,36 @@
 package zio.internal
 
-import org.specs2.Specification
+import utest._
 
-class OneShotSpec extends Specification {
-  def is =
-    "OneShotSpec".title ^ s2"""
-      Make a new OneShot
-         set must accept a non-null value.              $setNonNull
-         set must not accept a null value.              $setNull
-         isSet must report if a value is set.           $isSet
-         get must fail if no value is set.              $getWithNoValue
-         cannot set value twice                         $setTwice
-    """
+object OneShotSpec extends TestSuite {
+  override def tests: Tests = Tests {
+    test("Make a new OneShot") {
+      test("set must accept a non-null value") - {
+        val oneShot = OneShot.make[Int]
+        oneShot.set(1)
 
-  def setNonNull = {
-    val oneShot = OneShot.make[Int]
-    oneShot.set(1)
+        assert(oneShot.get() == 1)
+      }
+      test("set must not accept a null value") - {
+        val oneShot = OneShot.make[Object]
 
-    oneShot.get() must_=== 1
-  }
-
-  def setNull = {
-    val oneShot = OneShot.make[Object]
-    oneShot.set(null) must throwA[Error]
-  }
-
-  def isSet = {
-    val oneShot = OneShot.make[Int]
-    oneShot.isSet must beFalse
-    oneShot.set(1)
-    oneShot.isSet must beTrue
-  }
-
-  def getWithNoValue = {
-    val oneShot = OneShot.make[Object]
-    oneShot.get() must throwA[Error]
-  }
-
-  def setTwice = {
-    val oneShot = OneShot.make[Int]
-    oneShot.set(1)
-    oneShot.set(2) must throwA[Error]
+        intercept[Error](oneShot.set(null))
+      }
+      test("isSet must report if a value is set") - {
+        val oneShot = OneShot.make[Int]
+        assert(!oneShot.isSet)
+        oneShot.set(1)
+        assert(oneShot.isSet)
+      }
+      test("get must fail if no value is set") - {
+        val oneShot = OneShot.make[Object]
+        intercept[Error] { val _ = oneShot.get() }
+      }
+      test("cannot set value twice") - {
+        val oneShot = OneShot.make[Int]
+        oneShot.set(1)
+        intercept[Error](oneShot.set(2))
+      }
+    }
   }
 }

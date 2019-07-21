@@ -3,7 +3,9 @@ package zio.internal
 import java.util.concurrent.RejectedExecutionException
 
 import scala.concurrent.ExecutionContext
-import org.specs2.Specification
+import utest._
+
+import scala.reflect.ClassTag
 
 final class TestExecutor(val submitResult: Boolean) extends Executor {
   val here: Boolean                       = true
@@ -35,44 +37,59 @@ object TestExecutor {
   }
 }
 
-class ExecutorSpec extends Specification {
-  def is =
-    "ExecutorSpec".title ^ s2"""
-      Create the default unyielding executor and check that:
-        When converted to an EC, it reports Throwables to stdout                   $exec1
+object ExecutorSpec extends TestSuite {
 
-      Create an executor that cannot have tasks submitted to and check that:
-        It throws an exception upon submission                                     $fail1
-        When converted to an ExecutionContext, it throws an exception              $fail2
-        When created from an EC, throw when fed an effect                             $fail3
+  //TODO: What is methods using this really testing?
+  private def interceptNot[T: ClassTag](expr: => Unit): Unit =
+    try {
+      expr
+    } catch {
+      case _: T         => assert(false) //Find a way to have actual error here
+      case _: Throwable => assert(true)
+    }
 
-      Create a yielding executor and check that:
-        Runnables can be submitted                                                 $yield1
-        When converted to an ExecutionContext, it accepts Runnables                $yield2
-        When created from an EC, must not throw when fed an effect                    $yield3
+  override def tests: Tests = Tests {
+    test("Create the default unyielding executor and check that") {
+      test("When converted to an EC, it reports Throwables to stdout") - {
+        val t = new CheckPrintThrowable
+        TestExecutor.failing.asEC.reportFailure(t)
+        assert(t.printed)
+      }
+    }
+    test("Create an executor that cannot have tasks submitted to and check that") {
+      test("It throws an exception upon submission") - {
+        intercept[RejectedExecutionException](TestExecutor.failing.submitOrThrow(() => ()))
+      }
+      test("When converted to an ExecutionContext, it throws an exception") - {
+        intercept[RejectedExecutionException](TestExecutor.failing.asEC.execute(() => ()))
+      }
+      test("When created from an EC, throw when fed an effect") - {
+        intercept[RejectedExecutionException](
+          Executor
+            .fromExecutionContext(1)(TestExecutor.badEC)
+            .submitOrThrow(() => ())
+        )
+      }
+    }
 
-      Create an unyielding executor and check that:
-        Runnables can be submitted                                                 $unyield1
-        When converted to an ExecutionContext, it accepts Runnables                $unyield2
-    """
-
-  def exec1 = {
-    val t = new CheckPrintThrowable
-    TestExecutor.failing.asEC.reportFailure(t)
-    t.printed must beTrue
+    test("Create a yielding executor and check that") {
+      test("Runnables can be submitted") - {
+        interceptNot[RejectedExecutionException](TestExecutor.y.submitOrThrow(() => ()))
+      }
+      test("When converted to an ExecutionContext, it accepts Runnables") - {
+        interceptNot[RejectedExecutionException](TestExecutor.y.asEC.execute(() => ()))
+      }
+      test("When created from an EC, must not throw when fed an effect") - {
+        assert(Executor.fromExecutionContext(1)(TestExecutor.ec).submit(() => ()))
+      }
+    }
+    test("Create an unyielding executor and check that") {
+      test("Runnables can be submitted") - {
+        interceptNot[RejectedExecutionException](TestExecutor.u.submitOrThrow(() => ()))
+      }
+      test("When converted to an ExecutionContext, it accepts Runnables") - {
+        interceptNot[RejectedExecutionException](TestExecutor.u.asEC.execute(() => ()))
+      }
+    }
   }
-
-  def fail1 = TestExecutor.failing.submitOrThrow(() => ()) must throwA[RejectedExecutionException]
-  def fail2 = TestExecutor.failing.asEC.execute(() => ()) must throwA[RejectedExecutionException]
-  def fail3 =
-    Executor
-      .fromExecutionContext(1)(TestExecutor.badEC)
-      .submitOrThrow(() => ()) must throwA[RejectedExecutionException]
-
-  def yield1 = TestExecutor.y.submitOrThrow(() => ()) must not(throwA[RejectedExecutionException])
-  def yield2 = TestExecutor.y.asEC.execute(() => ()) must not(throwA[RejectedExecutionException])
-  def yield3 = Executor.fromExecutionContext(1)(TestExecutor.ec).submit(() => ()) must beTrue
-
-  def unyield1 = TestExecutor.u.submitOrThrow(() => ()) must not(throwA[RejectedExecutionException])
-  def unyield2 = TestExecutor.u.asEC.execute(() => ()) must not(throwA[RejectedExecutionException])
 }
