@@ -1,36 +1,47 @@
 package zio
 
+import utest._
 import zio.duration._
 import zio.random._
 
-class RetrySpec extends BaseCrossPlatformSpec {
-  def is = "RetrySpec".title ^ s2"""
-   Retry on failure according to a provided strategy
-      retry 0 time for `once` when first time succeeds $notRetryOnSuccess
-      retry 0 time for `recurs(0)` $retryRecurs0
-      retry exactly one time for `once` when second time succeeds $retryOnceSuccess
-      retry exactly one time for `once` even if still in error $retryOnceFail
-      for a given number of times $retryN
-      for a given number of times with random jitter in (0, 1) $retryNUnitIntervalJittered
-      for a given number of times with random jitter in custom interval $retryNCustomIntervalJittered
-      fixed delay with error predicate $fixedWithErrorPredicate
-      fibonacci delay $fibonacci
-      linear delay $linear
-      exponential delay with default factor $exponential
-      exponential delay with other factor $exponentialWithFactor
-  Retry according to a provided strategy
-    for up to 10 times $recurs10Retry
-  Return the result of the fallback after failing and no more retries left
-    if fallback succeed - retryOrElse $retryOrElseFallbackSucceed
-    if fallback failed - retryOrElse $retryOrElseFallbackFailed
-    if fallback succeed - retryOrElseEither $retryOrElseEitherFallbackSucceed
-    if fallback failed - retryOrElseEither $retryOrElseEitherFallbackFailed
-  Return the result after successful retry
-     retry exactly one time for `once` when second time succeeds - retryOrElse $retryOrElseSucceed
-     retry exactly one time for `once` when second time succeeds - retryOrElse0 $retryOrElseEitherSucceed
-  Retry a failed action 2 times and call `ensuring` should
-     run the specified finalizer as soon as the schedule is complete $ensuring
-  """
+object RetrySpec extends BaseCrossPlatformSpec2 with UtestScalacheckExtension {
+
+  override def tests: Tests = Tests {
+    test("Retry on failure according to a provided strategy") {
+      test("retry 0 time for `once` when first time succeeds") - unsafeRun(notRetryOnSuccess)
+      test("retry 0 time for `recurs(0)`") - unsafeRun(retryRecurs0)
+      test("retry exactly one time for `once` when second time succeeds") - unsafeRun(retryOnceSuccess)
+      test("retry exactly one time for `once` even if still in error") - unsafeRun(retryOnceFail)
+      test("for a given number of times") - unsafeRun(retryN)
+      test("for a given number of times with random jitter in (0, 1)") - unsafeRun(retryNUnitIntervalJittered)
+      test("for a given number of times with random jitter in custom interval") - unsafeRun(
+        retryNCustomIntervalJittered
+      )
+      test("fixed delay with error predicate") - unsafeRun(fixedWithErrorPredicate)
+      test("fibonacci delay") - unsafeRun(fibonacci)
+      test("linear delay") - unsafeRun(linear)
+      test("exponential delay with default factor") - unsafeRun(exponential)
+      test("exponential delay with other factor") - unsafeRun(exponentialWithFactor)
+    }
+    test("Retry according to a provided strategy") {
+      test("for up to 10 times") - unsafeRun(recurs10Retry)
+    }
+    test("Return the result of the fallback after failing and no more retries left") {
+      test("if fallback succeed - retryOrElse") - unsafeRun(retryOrElseFallbackSucceed)
+      test("if fallback failed - retryOrElse") - unsafeRun(retryOrElseFallbackFailed)
+      test("if fallback succeed - retryOrElseEither") - unsafeRun(retryOrElseEitherFallbackSucceed)
+      test("if fallback failed - retryOrElseEither") - unsafeRun(retryOrElseEitherFallbackFailed)
+    }
+    test("Return the result after successful retry") {
+      test("retry exactly one time for `once` when second time succeeds - retryOrElse") - unsafeRun(retryOrElseSucceed)
+      test("retry exactly one time for `once` when second time succeeds - retryOrElse0") - unsafeRun(
+        retryOrElseEitherSucceed
+      )
+    }
+    test("Retry a failed action 2 times and call `ensuring` should") {
+      test("run the specified finalizer as soon as the schedule is complete") - unsafeRun(ensuring)
+    }
+  }
 
   def retryCollect[R, E, A, E1 >: E, S](
     io: IO[E, A],
@@ -66,7 +77,7 @@ class RetrySpec extends BaseCrossPlatformSpec {
    */
 
   // no retry on success
-  def notRetryOnSuccess =
+  def notRetryOnSuccess() =
     for {
       ref <- Ref.make(0)
       _   <- ref.update(_ + 1).retry(Schedule.once)
@@ -74,7 +85,7 @@ class RetrySpec extends BaseCrossPlatformSpec {
     } yield i must_=== 1
 
   // one retry on failure
-  def retryOnceSuccess =
+  def retryOnceSuccess() =
     for {
       ref <- Ref.make(0)
       _   <- failOn0(ref).retry(Schedule.once)
@@ -82,17 +93,19 @@ class RetrySpec extends BaseCrossPlatformSpec {
     } yield r must_=== 2
 
   // no more than one retry on retry `once`
-  def retryOnceFail =
+  def retryOnceFail() =
     (for {
       ref <- Ref.make(0)
       _   <- alwaysFail(ref).retry(Schedule.once)
-    } yield ()).foldM(
-      err => IO.succeed(err),
-      _ => IO.succeed("A failure was expected")
-    ) must_=== "Error: 2"
+    } yield ())
+      .foldM(
+        err => IO.succeed(err),
+        _ => IO.succeed("A failure was expected")
+      )
+      .map(s => assert(s == "Error: 2"))
 
   // 0 retry means "one execution in all, no retry, whatever the output"
-  def retryRecurs0 =
+  def retryRecurs0() =
     (for {
       ref <- Ref.make(0)
       i   <- alwaysFail(ref).retry(Schedule.recurs(0))
@@ -100,31 +113,32 @@ class RetrySpec extends BaseCrossPlatformSpec {
       .foldM(
         err => IO.succeed(err),
         _ => IO.succeed("it should not be a success")
-      ) must_=== "Error: 1"
+      )
+      .map(s => assert(s == "Error: 1"))
 
-  def retryN = {
+  def retryN() = {
     val retried  = retryCollect(IO.fail("Error"), Schedule.recurs(5))
     val expected = (Left("Error"), List(1, 2, 3, 4, 5, 6).map((Duration.Zero, _)))
-    retried must_=== expected
+    retried.map(s => assert(s == expected))
   }
 
-  def retryNUnitIntervalJittered = {
+  def retryNUnitIntervalJittered() = {
     val schedule: ZSchedule[Random, Int, Int] = Schedule.recurs(5).delayed(_ => 500.millis).jittered
     val scheduled: UIO[List[(Duration, Int)]] = schedule.run(List(1, 2, 3, 4, 5)).provide(TestRandom)
 
     val expected = List(1, 2, 3, 4, 5).map((250.millis, _))
-    scheduled must_=== expected
+    scheduled.map(s => assert(s == expected))
   }
 
-  def retryNCustomIntervalJittered = {
+  def retryNCustomIntervalJittered() = {
     val schedule: ZSchedule[Random, Int, Int] = Schedule.recurs(5).delayed(_ => 500.millis).jittered(2, 4)
     val scheduled: UIO[List[(Duration, Int)]] = schedule.run(List(1, 2, 3, 4, 5)).provide(TestRandom)
 
     val expected = List(1, 2, 3, 4, 5).map((1500.millis, _))
-    scheduled must_=== expected
+    scheduled.map(s => assert(s == expected))
   }
 
-  def fixedWithErrorPredicate = {
+  def fixedWithErrorPredicate() = {
     var i = 0
     val io = IO.effectTotal[Unit](i += 1).flatMap[Any, String, Unit] { _ =>
       if (i < 5) IO.fail("KeepTryingError") else IO.fail("GiveUpError")
@@ -132,28 +146,28 @@ class RetrySpec extends BaseCrossPlatformSpec {
     val strategy = Schedule.spaced(200.millis).whileInput[String](_ == "KeepTryingError")
     val retried  = retryCollect(io, strategy)
     val expected = (Left("GiveUpError"), List(1, 2, 3, 4, 5).map((200.millis, _)))
-    retried must_=== expected
+    retried.map(s => assert(s == expected))
   }
 
-  def recurs10Retry = {
+  def recurs10Retry() = {
     var i                            = 0
     val strategy: Schedule[Any, Int] = Schedule.recurs(10)
     val io = IO.effectTotal[Unit](i += 1).flatMap { _ =>
       if (i < 5) IO.fail("KeepTryingError") else IO.succeedLazy(i)
     }
-    io.retry(strategy) must_=== 5
+    io.retry(strategy).map(s => assert(s == 5))
   }
 
-  def fibonacci =
+  def fibonacci() =
     checkErrorWithPredicate(Schedule.fibonacci(100.millis), List(1, 1, 2, 3, 5))
 
-  def linear =
+  def linear() =
     checkErrorWithPredicate(Schedule.linear(100.millis), List(1, 2, 3, 4, 5))
 
-  def exponential =
+  def exponential() =
     checkErrorWithPredicate(Schedule.exponential(100.millis), List(2, 4, 8, 16, 32))
 
-  def exponentialWithFactor =
+  def exponentialWithFactor() =
     checkErrorWithPredicate(Schedule.exponential(100.millis, 3.0), List(3, 9, 27, 81, 243))
 
   def checkErrorWithPredicate(schedule: Schedule[Any, Duration], expectedSteps: List[Int]) = {
@@ -163,26 +177,26 @@ class RetrySpec extends BaseCrossPlatformSpec {
     }
     val strategy = schedule.whileInput[String](_ == "KeepTryingError")
     val expected = (Left("GiveUpError"), expectedSteps.map(i => ((i * 100).millis, (i * 100).millis)))
-    retryCollect(io, strategy) must_=== expected
+    retryCollect(io, strategy).map(s => assert(s == expected))
   }
 
   val ioSucceed = (_: String, _: Unit) => IO.succeed("OrElse")
 
   val ioFail = (_: String, _: Unit) => IO.fail("OrElseFailed")
 
-  def retryOrElseSucceed =
+  def retryOrElseSucceed() =
     for {
       ref <- Ref.make(0)
       o   <- failOn0(ref).retryOrElse(Schedule.once, ioFail)
     } yield o must_=== 2
 
-  def retryOrElseFallbackSucceed =
+  def retryOrElseFallbackSucceed() =
     for {
       ref <- Ref.make(0)
       o   <- alwaysFail(ref).retryOrElse(Schedule.once, ioSucceed)
     } yield o must_=== "OrElse"
 
-  def retryOrElseFallbackFailed =
+  def retryOrElseFallbackFailed() =
     (for {
       ref <- Ref.make(0)
       i   <- alwaysFail(ref).retryOrElse(Schedule.once, ioFail)
@@ -190,21 +204,22 @@ class RetrySpec extends BaseCrossPlatformSpec {
       .foldM(
         err => IO.succeed(err),
         _ => IO.succeed("it should not be a success")
-      ) must_=== "OrElseFailed"
+      )
+      .map(s => assert(s == "OrElseFailed"))
 
-  def retryOrElseEitherSucceed =
+  def retryOrElseEitherSucceed() =
     for {
       ref <- Ref.make(0)
       o   <- failOn0(ref).retryOrElseEither(Schedule.once, ioFail)
-    } yield o must beRight(2)
+    } yield assert(o == Right(2))
 
-  def retryOrElseEitherFallbackSucceed =
+  def retryOrElseEitherFallbackSucceed() =
     for {
       ref <- Ref.make(0)
       o   <- alwaysFail(ref).retryOrElseEither(Schedule.once, ioSucceed)
-    } yield o must beLeft("OrElse")
+    } yield assert(o == Left("OrElse"))
 
-  def retryOrElseEitherFallbackFailed =
+  def retryOrElseEitherFallbackFailed() =
     (for {
       ref <- Ref.make(0)
       i   <- alwaysFail(ref).retryOrElseEither(Schedule.once, ioFail)
@@ -212,7 +227,8 @@ class RetrySpec extends BaseCrossPlatformSpec {
       .foldM(
         err => IO.succeed(err),
         _ => IO.succeed("it should not be a success")
-      ) must_=== "OrElseFailed"
+      )
+      .map(s => assert(s == "OrElseFailed"))
 
   /*
    * A function that increments ref each time it is called.
@@ -235,12 +251,12 @@ class RetrySpec extends BaseCrossPlatformSpec {
       x <- IO.fail(s"Error: $i")
     } yield x
 
-  def ensuring =
+  def ensuring() =
     for {
       p          <- Promise.make[Nothing, Unit]
       v          <- IO.fail("oh no").retry(Schedule.recurs(2)).ensuring(p.succeed(())).option
       finalizerV <- p.poll
-    } yield (v must beNone) and (finalizerV.isDefined must beTrue)
+    } yield assert(v.isEmpty, finalizerV.isDefined)
 
   object TestRandom extends Random {
     object random extends Random.Service[Any] {

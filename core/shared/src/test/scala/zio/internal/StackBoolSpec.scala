@@ -1,63 +1,63 @@
 package zio.internal
 
 import org.scalacheck.{ Arbitrary, Gen, Prop }
-import org.specs2.{ ScalaCheck, Specification }
+import utest._
+import zio.UtestScalacheckExtension
 
-class StackBoolSpec extends Specification with ScalaCheck {
-  def is =
-    "StackBoolSpec".title ^ s2"""
-        Size tracking                 $e0
-        From/to list identity         $e1
-        Push/pop example              $e2
-        Peek/pop identity             $e3
-        GetOrElse index out of bounds $e4
-    """
+object StackBoolSpec extends TestSuite with UtestScalacheckExtension {
 
+  override def tests: Tests = Tests {
+    test("Size tracking                 ") - propTest(e0)
+    test("From/to list identity         ") - propTest(e1)
+    test("Push/pop example              ") - propTest(e2)
+    test("Peek/pop identity             ") - propTest(e3)
+    test("GetOrElse index out of bounds ") - e4
+  }
   import Arbitrary._
 
   private val generator: Gen[List[Boolean]] = boolListGen(0, 200)
 
-  def e0 =
+  def e0() =
     Prop.forAll(generator) { list: List[Boolean] =>
-      StackBool(list: _*).size must_== list.length
+      StackBool(list: _*).size == list.length
     }
 
-  def e1 =
+  def e1() =
     Prop.forAll(generator) { list: List[Boolean] =>
-      StackBool(list: _*).toList must_=== list
+      StackBool(list: _*).toList == list
     }
 
-  def e2 =
+  def e2() =
     Prop.forAll(generator) { list: List[Boolean] =>
       val stack = StackBool()
 
       list.foreach(stack.push(_))
 
-      list.reverse.foldLeft(true must_=== true) {
+      list.reverse.foldLeft(true) {
         case (result, flag) =>
-          result and (stack.popOrElse(!flag) must_=== flag)
+          result && (stack.popOrElse(!flag) == flag)
       }
     }
 
-  def e3 =
+  def e3() =
     Prop.forAll(generator) { list: List[Boolean] =>
       val stack = StackBool()
 
       list.foreach(stack.push(_))
 
-      list.reverse.foldLeft(true must_=== true) {
+      list.reverse.foldLeft(true) {
         case (result, flag) =>
           val peeked = stack.peekOrElse(!flag)
           val popped = stack.popOrElse(!flag)
 
-          result and (peeked must_=== popped)
+          result && (peeked == popped)
       }
     }
 
-  def e4 = {
+  def e4() = {
     val stack  = StackBool()
     val result = stack.getOrElse(100, true)
-    result must_=== true
+    assert(result)
   }
 
   private def boolListGen(min: Int, max: Int) =

@@ -1,171 +1,191 @@
 package zio
 
 import org.scalacheck._
-import org.specs2.ScalaCheck
-import org.specs2.execute.Result
+import utest._
 
 import scala.collection.mutable
 import scala.util.Try
 import zio.Cause.{ die, fail, interrupt, Both }
 
-class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime with GenIO with ScalaCheck {
+object IOSpec extends TestRuntime with GenIO with UtestScalacheckExtension {
   import Prop.forAll
 
-  def is = "IOSpec".title ^ s2"""
-   Generate a list of String and a f: String => Task[Int]:
-      `IO.foreach` returns the list of results. $t1
-   Create a list of Strings and pass an f: String => IO[String, Int]:
-      `IO.foreach` both evaluates effects and returns the list of Ints in the same order. $t2
-   Create a list of String and pass an f: String => IO[String, Int]:
-      `IO.foreach` fails with a NumberFormatException exception. $t3
-   Create a list of Strings and pass an f: String => IO[String, Int]:
-      `IO.foreachPar` returns the list of Ints in the same order. $t4
-   Create an integer and an f: Int => String:
-      `IO.bimap(f, identity)` maps an IO[Int, String] into an IO[String, String]. $t5
-   Create a list of Ints and map with IO.point:
-      `IO.collectAllPar` returns the list of Ints in the same order. $t6
-   Create a list of Ints and map with IO.point:
-      `IO.forkAll` returns the list of Ints in the same order. $t7
-   Create a list of Strings and pass an f: String => UIO[Int]:
-      `IO.collectAllParN` returns the list of Ints in the same order. $t8
-   Create a list of Ints and pass an f: Int => UIO[Int]:
-      `IO.foreachParN` returns the list of created Strings in the appropriate order. $t9
-   Create a list of Ints:
-      `IO.foldLeft` with a successful step function sums the list properly. $t10
-   Create a non-empty list of Ints:
-      `IO.foldLeft` with a failing step function returns a failed IO. $t11
-   Check done lifts exit result into IO. $testDone
-   Check `when` executes correct branch only. $testWhen
-   Check `whenM` executes condition effect and correct branch. $testWhenM
-   Check `unsandbox` unwraps exception. $testUnsandbox
-   Check `supervise` returns same value as IO.supervise. $testSupervise
-   Check `flatten` method on IO[E, IO[E, String] returns the same IO[E, String] as `IO.flatten` does. $testFlatten
-   Check `absolve` method on IO[E, Either[E, A]] returns the same IO[E, Either[E, String]] as `IO.absolve` does. $testAbsolve
-   Check non-`memoize`d IO[E, A] returns new instances on repeated calls due to referential transparency. $testNonMemoizationRT
-   Check `memoize` method on IO[E, A] returns the same instance on repeated calls. $testMemoization
-   Check `raceAll` method returns the same IO[E, A] as `IO.raceAll` does. $testRaceAll
-   Check `firstSuccessOf` method returns the same IO[E, A] as `IO.firstSuccessOf` does. $testfirstSuccessOf
-   Check `zipPar` method does not swallow exit causes of loser. $testZipParInterupt
-   Check `zipPar` method does not report failure when interrupting loser after it succeeded. $testZipParSucceed
-   Check `orElse` method does not recover from defects. $testOrElseDefectHandling
-   Check `someOrFail` method extracts the optional value. $testSomeOrFailExtractOptionalValue
-   Check `someOrFail` method fails when given a None. $testSomeOrFailWithNone
-   Check `someOrFailException` method extracts the optional value. $testSomeOrFailExceptionOnOptionalValue
-   Check `someOrFailException` method fails when given a None. $testSomeOrFailExceptionOnEmptyValue
-   Check `rightOrFail` method extracts the Right value. $testRightOrFailExtractsRightValue
-   Check `rightOrFail` method fails when given a Left. $testRightOrFailWithLeft
-   Check `rightOrFailException` method extracts the Right value. $testRightOrFailExceptionOnRightValue
-   Check `rightOrFailException` method fails when given a Left. $testRightOrFailExceptionOnLeftValue
-   Check `leftOrFail` method extracts the Left value. $testLeftOrFailExtractsLeftValue
-   Check `leftOrFail` method fails when given a Right. $testLeftOrFailWithRight
-   Check `leftOrFailException` method extracts the Left value. $testLeftOrFailExceptionOnLeftValue
-   Check `leftOrFailException` method fails when given a Right. $testLeftOrFailExceptionOnRightValue
-   Check uncurried `bracket`. $testUncurriedBracket
-   Check uncurried `bracket_`. $testUncurriedBracket_
-   Check uncurried `bracketExit`. $testUncurriedBracketExit
-   Check `bracketExit` error handling. $testBracketExitErrorHandling
-   Check `foreach_` runs effects in order. $testForeach_Order
-   Check `foreach_` can be run twice. $testForeach_Twice
-   Check `foreachPar_` runs all effects. $testForeachPar_Full
-   Check `foreachParN_` runs all effects. $testForeachParN_Full
-   Check `filterOrElse` returns checked failure from held value $testFilterOrElse
-   Check `filterOrElse_` returns checked failure ignoring value $testFilterOrElse_
-   Check `filterOrFail` returns failure ignoring value $testFilterOrFail
-   Check `collect` returns failure ignoring value $testCollect
-   Check `collectM` returns failure ignoring value $testCollectM
-   Check `reject` returns failure ignoring value $testReject
-   Check `rejectM` returns failure ignoring value $testRejectM
-   Check `foreachParN` works on large lists $testForeachParN_Threads
-   Check `foreachParN` runs effects in parallel $testForeachParN_Parallel
-   Check `foreachParN` propogates error $testForeachParN_Error
-   Check `foreachParN` interrupts effects on first failure $testForeachParN_Interruption
-    """
+  override def tests: Tests = Tests {
+    test("Generate a list of String and a f: String => Task[Int]") {
+      test("`IO.foreach` returns the list of results") - t1
+    }
+    test("Create a list of Strings and pass an f: String => IO[String, Int]") {
+      test("`IO.foreach` both evaluates effects and returns the list of Ints in the same order") - t2
+    }
+    test("Create a list of String and pass an f: String => IO[String, Int]") {
+      test("`IO.foreach` fails with a NumberFormatException exception") - t3
+    }
+    test("Create a list of Strings and pass an f: String => IO[String, Int]") {
+      test("`IO.foreachPar` returns the list of Ints in the same order") - t4
+    }
+    test("Create an integer and an f: Int => String") {
+      test("`IO.bimap(f, identity)` maps an IO[Int, String] into an IO[String, String]") - t5
+    }
+    test("Create a list of Ints and map with IO.point") {
+      test("`IO.collectAllPar` returns the list of Ints in the same order") - t6
+    }
+    test("Create a list of Ints and map with IO.point") {
+      test("`IO.forkAll` returns the list of Ints in the same order") - t7
+    }
+    test("Create a list of Strings and pass an f: String => UIO[Int]") {
+      test("`IO.collectAllParN` returns the list of Ints in the same order") - t8
+    }
+    test("Create a list of Ints and pass an f: Int => UIO[Int]") {
+      test("`IO.foreachParN` returns the list of created Strings in the appropriate order") - t9
+    }
+    test("Create a list of Ints") {
+      test("`IO.foldLeft` with a successful step function sums the list properly") - t10
+    }
+    test("Create a non-empty list of Ints") {
+      test("`IO.foldLeft` with a failing step function returns a failed IO") - t11
+    }
+    test("Check done lifts exit result into IO.") - testDone
+    test("Check `when` executes correct branch only.") - testWhen
+    test("Check `whenM` executes condition effect and correct branch.") - testWhenM
+    test("Check `unsandbox` unwraps exception.") - testUnsandbox
+    test("Check `supervise` returns same value as IO.supervise.") - testSupervise
+    test("Check `flatten` method on IO[E, IO[E, String] returns the same IO[E, String] as `IO.flatten` does.") - testFlatten
+    test(
+      "Check `absolve` method on IO[E, Either[E, A]] returns the same IO[E, Either[E, String]] as `IO.absolve` does."
+    ) - testAbsolve
+    test("Check non-`memoize`d IO[E, A] returns new instances on repeated calls due to referential transparency.") - testNonMemoizationRT
+    test("Check `memoize` method on IO[E, A] returns the same instance on repeated calls.") - testMemoization
+    test("Check `raceAll` method returns the same IO[E, A] as `IO.raceAll` does.") - testRaceAll
+    test("Check `firstSuccessOf` method returns the same IO[E, A] as `IO.firstSuccessOf` does.") - testfirstSuccessOf
+    test("Check `zipPar` method does not swallow exit causes of loser.") - testZipParInterupt
+    test("Check `zipPar` method does not report failure when interrupting loser after it succeeded.") - testZipParSucceed
+    test("Check `orElse` method does not recover from defects.") - testOrElseDefectHandling
+    test("Check `someOrFail` method extracts the optional value.") - testSomeOrFailExtractOptionalValue
+    test("Check `someOrFail` method fails when given a None.") - testSomeOrFailWithNone
+    test("Check `someOrFailException` method extracts the optional value.") - testSomeOrFailExceptionOnOptionalValue
+    test("Check `someOrFailException` method fails when given a None.") - testSomeOrFailExceptionOnEmptyValue
+    test("Check `rightOrFail` method extracts the Right value.") - testRightOrFailExtractsRightValue
+    test("Check `rightOrFail` method fails when given a Left.") - testRightOrFailWithLeft
+    test("Check `rightOrFailException` method extracts the Right value.") - testRightOrFailExceptionOnRightValue
+    test("Check `rightOrFailException` method fails when given a Left.") - testRightOrFailExceptionOnLeftValue
+    test("Check `leftOrFail` method extracts the Left value.") - testLeftOrFailExtractsLeftValue
+    test("Check `leftOrFail` method fails when given a Right.") - testLeftOrFailWithRight
+    test("Check `leftOrFailException` method extracts the Left value.") - testLeftOrFailExceptionOnLeftValue
+    test("Check `leftOrFailException` method fails when given a Right.") - testLeftOrFailExceptionOnRightValue
+    test("Check uncurried `bracket`.") - testUncurriedBracket
+    test("Check uncurried `bracket_`.") - testUncurriedBracket_
+    test("Check uncurried `bracketExit`.") - testUncurriedBracketExit
+    test("Check `bracketExit` error handling.") - testBracketExitErrorHandling
+    test("Check `foreach_` runs effects in order.") - testForeach_Order
+    test("Check `foreach_` can be run twice.") - testForeach_Twice
+    test("Check `foreachPar_` runs all effects.") - testForeachPar_Full
+    test("Check `foreachParN_` runs all effects.") - testForeachParN_Full
+    test("Check `filterOrElse` returns checked failure from held value") - testFilterOrElse
+    test("Check `filterOrElse_` returns checked failure ignoring value") - testFilterOrElse_
+    test("Check `filterOrFail` returns failure ignoring value") - testFilterOrFail
+    test("Check `collect` returns failure ignoring value") - testCollect
+    test("Check `collectM` returns failure ignoring value") - testCollectM
+    test("Check `reject` returns failure ignoring value") - testReject
+    test("Check `rejectM` returns failure ignoring value") - testRejectM
+    test("Check `foreachParN` works on large lists") - testForeachParN_Threads
+    test("Check `foreachParN` runs effects in parallel") - testForeachParN_Parallel
+    test("Check `foreachParN` propogates error") - testForeachParN_Error
+    test("Check `foreachParN` interrupts effects on first failure") - testForeachParN_Interruption
+  }
 
   def functionIOGen: Gen[String => Task[Int]] =
     Gen.function1[String, Task[Int]](genSuccess[Throwable, Int])
 
-  def listGen: Gen[List[String]] =
+  val listGen: Gen[List[String]] =
     Gen.listOfN(100, Gen.alphaNumStr)
 
-  def t1 = forAll(functionIOGen, listGen) { (f, list) =>
-    val res = unsafeRun(IO.foreach(list)(f))
-    res must be size 100
-    res must beAnInstanceOf[List[Int]]
+  def t1() = propTest {
+    forAll(functionIOGen, listGen) { (f, list) =>
+      val res = unsafeRun(IO.foreach(list)(f))
+      res.size == 100 && res.isInstanceOf[List[Int]]
+    }
   }
 
-  def t2 = {
+  def t2() = {
     val list    = List("1", "2", "3")
     val effects = new mutable.ListBuffer[String]
     val res     = unsafeRun(IO.foreach(list)(x => IO.effectTotal(effects += x) *> IO.succeedLazy[Int](x.toInt)))
-    (effects.toList, res) must be_===((list, List(1, 2, 3)))
+    assertTuple((effects.toList, res), (list, List(1, 2, 3)))
   }
 
-  def t3 = {
+  def t3() = {
     val list = List("1", "h", "3")
     val res  = Try(unsafeRun(IO.foreach(list)(x => IO.succeedLazy[Int](x.toInt))))
-    res must beAFailedTry.withThrowable[FiberFailure]
+    assert(res.isFailure, res.failed.get.isInstanceOf[FiberFailure])
   }
 
-  def t4 = {
+  def t4() = {
     val list = List("1", "2", "3")
     val res  = unsafeRun(IO.foreachPar(list)(x => IO.succeedLazy[Int](x.toInt)))
-    res must be_===(List(1, 2, 3))
+    assert(res == (List(1, 2, 3)))
   }
 
-  def t5 = forAll { (i: Int) =>
-    val res = unsafeRun(IO.fail[Int](i).bimap(_.toString, identity).either)
-    res must_=== Left(i.toString)
+  def t5() = propTest {
+    forAll { (i: Int) =>
+      val res = unsafeRun(IO.fail[Int](i).bimap(_.toString, identity).either)
+      res == Left(i.toString)
+    }
   }
 
-  def t6 = {
+  def t6() = {
     val list = List(1, 2, 3).map(IO.succeedLazy[Int](_))
     val res  = unsafeRun(IO.collectAllPar(list))
-    res must be_===(List(1, 2, 3))
+    assert(res == List(1, 2, 3))
   }
 
-  def t7 = {
+  def t7() = {
     val list = List(1, 2, 3).map(IO.succeedLazy[Int](_))
     val res  = unsafeRun(IO.forkAll(list).flatMap[Any, Nothing, List[Int]](_.join))
-    res must be_===(List(1, 2, 3))
+    assert(res == List(1, 2, 3))
   }
 
-  def t8 = {
+  def t8() = {
     val list = List(1, 2, 3).map(IO.succeedLazy[Int](_))
     val res  = unsafeRun(IO.collectAllParN(2)(list))
-    res must be_===(List(1, 2, 3))
+    assert(res == List(1, 2, 3))
   }
 
-  def t9 = {
+  def t9() = {
     val list = List(1, 2, 3)
     val res  = unsafeRun(IO.foreachParN(2)(list)(x => IO.succeedLazy(x.toString)))
-    res must be_===(List("1", "2", "3"))
+    assert(res == List("1", "2", "3"))
   }
 
-  def t10 = forAll { (l: List[Int]) =>
-    unsafeRun(IO.foldLeft(l)(0)((acc, el) => IO.succeed(acc + el))) must_=== unsafeRun(IO.succeed(l.sum))
+  def t10() = propTest {
+    forAll { (l: List[Int]) =>
+      unsafeRun(IO.foldLeft(l)(0)((acc, el) => IO.succeed(acc + el))) == unsafeRun(IO.succeed(l.sum))
+    }
   }
 
-  def t11 = forAll { (l: List[Int]) =>
-    l.size > 0 ==>
-      (unsafeRunSync(IO.foldLeft(l)(0)((_, _) => IO.fail("fail"))) must_=== unsafeRunSync(IO.fail("fail")))
+  def t11() = propTest {
+    forAll { (l: List[Int]) =>
+      if (l.nonEmpty) {
+        unsafeRunSync(IO.foldLeft(l)(0)((_, _) => IO.fail("fail"))) == unsafeRunSync(IO.fail("fail"))
+      } else true
+    }
   }
 
   private val exampleError = new Error("something went wrong")
 
-  def testDone = {
+  def testDone() = {
     val error                         = exampleError
     val completed                     = Exit.succeed(1)
     val interrupted: Exit[Error, Int] = Exit.interrupt
     val terminated: Exit[Error, Int]  = Exit.die(error)
     val failed: Exit[Error, Int]      = Exit.fail(error)
 
-    unsafeRun(IO.done(completed)) must_=== 1
-    unsafeRunSync(IO.done(interrupted)) must_=== Exit.interrupt
-    unsafeRunSync(IO.done(terminated)) must_=== Exit.die(error)
-    unsafeRunSync(IO.done(failed)) must_=== Exit.fail(error)
+    assert(unsafeRun(IO.done(completed)) == 1)
+    assert(unsafeRunSync(IO.done(interrupted)) == Exit.interrupt)
+    assert(unsafeRunSync(IO.done(terminated)) == Exit.die(error))
+    assert(unsafeRunSync(IO.done(failed)) == Exit.fail(error))
   }
 
-  def testWhen =
+  def testWhen() =
     unsafeRun(
       for {
         effectRef <- Ref.make(0)
@@ -176,12 +196,10 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         failure   = new Exception("expected")
         _         <- IO.fail(failure).when(false)
         failed    <- IO.fail(failure).when(true).either
-      } yield (val1 must_=== 0) and
-        (val2 must_=== 2) and
-        (failed must beLeft(failure))
+      } yield assert(val1 == 0, val2 == 2, failed == Left(failure))
     )
 
-  def testWhenM =
+  def testWhenM() =
     unsafeRun(
       for {
         effectRef      <- Ref.make(0)
@@ -197,91 +215,95 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         failure        = new Exception("expected")
         _              <- IO.fail(failure).whenM(conditionFalse)
         failed         <- IO.fail(failure).whenM(conditionTrue).either
-      } yield (val1 must_=== 0) and
-        (conditionVal1 must_=== 1) and
-        (val2 must_=== 2) and
-        (conditionVal2 must_=== 2) and
-        (failed must beLeft(failure))
+      } yield assert(val1 == 0, conditionVal1 == 1, val2 == 2, conditionVal2 == 2, failed == Left(failure))
     )
 
-  def testUnsandbox = {
+  def testUnsandbox() = {
     val failure: IO[Cause[Exception], String] = IO.fail(fail(new Exception("fail")))
     val success: IO[Cause[Any], Int]          = IO.succeed(100)
     unsafeRun(for {
       message <- failure.unsandbox.foldM(e => IO.succeed(e.getMessage), _ => IO.succeed("unexpected"))
       result  <- success.unsandbox
-    } yield (message must_=== "fail") and (result must_=== 100))
+    } yield assert(message == "fail", result == 100))
   }
 
-  def testSupervise = {
+  def testSupervise() = {
     val io = IO.effectTotal("supercalifragilisticexpialadocious")
     unsafeRun(for {
       supervise1 <- io.interruptChildren
       supervise2 <- IO.interruptChildren(io)
-    } yield supervise1 must ===(supervise2))
+    } yield assert(supervise1 == supervise2))
   }
 
-  def testFlatten = forAll(Gen.alphaStr) { str =>
-    unsafeRun(for {
-      flatten1 <- IO.succeedLazy(IO.succeedLazy(str)).flatten
-      flatten2 <- IO.flatten(IO.succeedLazy(IO.succeedLazy(str)))
-    } yield flatten1 must ===(flatten2))
+  def testFlatten() = propTest {
+    forAll(Gen.alphaStr) { str =>
+      unsafeRun(for {
+        flatten1 <- IO.succeedLazy(IO.succeedLazy(str)).flatten
+        flatten2 <- IO.flatten(IO.succeedLazy(IO.succeedLazy(str)))
+      } yield flatten1 == flatten2)
+    }
   }
 
-  def testAbsolve = forAll(Gen.alphaStr) { str =>
-    val ioEither: UIO[Either[Nothing, String]] = IO.succeed(Right(str))
-    unsafeRun(for {
-      abs1 <- ioEither.absolve
-      abs2 <- IO.absolve(ioEither)
-    } yield abs1 must ===(abs2))
+  def testAbsolve() = propTest {
+    forAll(Gen.alphaStr) { str =>
+      val ioEither: UIO[Either[Nothing, String]] = IO.succeed(Right(str))
+      unsafeRun(for {
+        abs1 <- ioEither.absolve
+        abs2 <- IO.absolve(ioEither)
+      } yield abs1 == abs2)
+    }
   }
 
-  def testNonMemoizationRT = forAll(Gen.alphaStr) { str =>
-    val io: UIO[Option[String]] = IO.succeedLazy(Some(str)) // using `Some` for object allocation
-    unsafeRun(
-      (io <*> io)
-        .map(tuple => tuple._1 must not beTheSameAs (tuple._2))
-    )
+  def testNonMemoizationRT() = propTest {
+    forAll(Gen.alphaStr) { str =>
+      val io: UIO[Option[String]] = IO.succeedLazy(Some(str)) // using `Some` for object allocation
+      unsafeRun(
+        (io <*> io)
+          .map(tuple => !(tuple._1 eq tuple._2))
+      )
+    }
   }
 
-  def testMemoization = forAll(Gen.alphaStr) { str =>
-    val ioMemo: UIO[UIO[Option[String]]] = IO.succeedLazy(Some(str)).memoize // using `Some` for object allocation
-    unsafeRun(
-      ioMemo
-        .flatMap(io => io <*> io)
-        .map(tuple => tuple._1 must beTheSameAs(tuple._2))
-    )
+  def testMemoization() = propTest {
+    forAll(Gen.alphaStr) { str =>
+      val ioMemo: UIO[UIO[Option[String]]] = IO.succeedLazy(Some(str)).memoize // using `Some` for object allocation
+      unsafeRun(
+        ioMemo
+          .flatMap(io => io <*> io)
+          .map(tuple => tuple._1 == tuple._2)
+      )
+    }
   }
 
-  def testRaceAll = {
+  def testRaceAll() = {
     val io  = IO.effectTotal("supercalifragilisticexpialadocious")
     val ios = List.empty[UIO[String]]
     unsafeRun(for {
       race1 <- io.raceAll(ios)
       race2 <- IO.raceAll(io, ios)
-    } yield race1 must ===(race2))
+    } yield assert(race1 == race2))
   }
 
-  def testfirstSuccessOf = {
+  def testfirstSuccessOf() = {
     val io  = IO.effectTotal("supercalifragilisticexpialadocious")
     val ios = List.empty[UIO[String]]
     unsafeRun(for {
       race1 <- io.firstSuccessOf(ios)
       race2 <- IO.firstSuccessOf(io, ios)
-    } yield race1 must ===(race2))
+    } yield assert(race1 == race2))
   }
 
-  def testZipParInterupt = {
+  def testZipParInterupt() = {
     val io = ZIO.interrupt.zipPar(IO.interrupt)
-    unsafeRunSync(io) must_=== Exit.Failure(Both(interrupt, interrupt))
+    assert(unsafeRunSync(io) == Exit.Failure(Both(interrupt, interrupt)))
   }
 
-  def testZipParSucceed = {
+  def testZipParSucceed() = {
     val io = ZIO.interrupt.zipPar(IO.succeed(1))
-    unsafeRun(io.sandbox.either).left.map(_.interrupted) must_=== Left(true)
+    assert(unsafeRun(io.sandbox.either).left.map(_.interrupted) == Left(true))
   }
 
-  def testOrElseDefectHandling = {
+  def testOrElseDefectHandling() = {
     val ex = new Exception("Died")
 
     unsafeRun {
@@ -290,83 +312,81 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         both  <- (ZIO.halt(Cause.Both(interrupt, die(ex))) <> IO.unit).run
         thn   <- (ZIO.halt(Cause.Then(interrupt, die(ex))) <> IO.unit).run
         fail  <- (ZIO.fail(ex) <> IO.unit).run
-      } yield (plain must_=== Exit.die(ex))
-        .and(both must_=== Exit.die(ex))
-        .and(thn must_=== Exit.die(ex))
-        .and(fail must_=== Exit.succeed(()))
+      } yield assert(plain == Exit.die(ex), both == Exit.die(ex), thn == Exit.die(ex), fail == Exit.succeed(()))
     }
   }
 
-  def testSomeOrFailWithNone = {
+  def testSomeOrFailWithNone() = {
     val task: Task[Int] = UIO(Option.empty[Int]).someOrFail(exampleError)
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
   }
 
-  def testSomeOrFailExtractOptionalValue = {
+  def testSomeOrFailExtractOptionalValue() = {
     val task: Task[Int] = UIO(Some(42)).someOrFail(exampleError)
-    unsafeRun(task) must_=== 42
+    assert(unsafeRun(task) == 42)
   }
 
-  def testSomeOrFailExceptionOnOptionalValue = unsafeRun(ZIO.succeed(Some(42)).someOrFailException) must_=== 42
+  def testSomeOrFailExceptionOnOptionalValue() = assert(unsafeRun(ZIO.succeed(Some(42)).someOrFailException) == 42)
 
-  def testSomeOrFailExceptionOnEmptyValue = {
+  def testSomeOrFailExceptionOnEmptyValue() = {
     val task = ZIO.succeed(Option.empty[Int]).someOrFailException
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
+
   }
 
-  def testRightOrFailExceptionOnRightValue = unsafeRun(ZIO.succeed(Right(42)).rightOrFailException) must_=== 42
+  def testRightOrFailExceptionOnRightValue() = assert(unsafeRun(ZIO.succeed(Right(42)).rightOrFailException) == 42)
 
-  def testRightOrFailExceptionOnLeftValue = {
+  def testRightOrFailExceptionOnLeftValue() = {
     val task: Task[Int] = ZIO.succeed(Left(2)).rightOrFailException
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
   }
 
-  def testRightOrFailExtractsRightValue = {
+  def testRightOrFailExtractsRightValue() = {
     val task: Task[Int] = UIO(Right(42)).rightOrFail(exampleError)
-    unsafeRun(task) must_=== 42
+    assert(unsafeRun(task) == 42)
   }
 
-  def testRightOrFailWithLeft = {
+  def testRightOrFailWithLeft() = {
     val task: Task[Int] = UIO(Left(1)).rightOrFail(exampleError)
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
   }
 
-  def testLeftOrFailExceptionOnLeftValue = unsafeRun(ZIO.succeed(Left(42)).leftOrFailException) must_=== 42
+  def testLeftOrFailExceptionOnLeftValue() = assert(unsafeRun(ZIO.succeed(Left(42)).leftOrFailException) == 42)
 
-  def testLeftOrFailExceptionOnRightValue = {
+  def testLeftOrFailExceptionOnRightValue() = {
     val task: Task[Int] = ZIO.succeed(Right(2)).leftOrFailException
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
   }
 
-  def testLeftOrFailExtractsLeftValue = {
+  def testLeftOrFailExtractsLeftValue() = {
     val task: Task[Int] = UIO(Left(42)).leftOrFail(exampleError)
-    unsafeRun(task) must_=== 42
+    assert(unsafeRun(task) == 42)
   }
 
-  def testLeftOrFailWithRight = {
+  def testLeftOrFailWithRight() = {
     val task: Task[Int] = UIO(Right(12)).leftOrFail(exampleError)
-    unsafeRun(task) must throwA[FiberFailure]
+    intercept[FiberFailure](unsafeRun(task *> UIO.unit))
   }
 
-  def testUncurriedBracket =
+  def testUncurriedBracket() =
     unsafeRun {
       for {
         release  <- Ref.make(false)
         result   <- ZIO.bracket(IO.succeed(42), (_: Int) => release.set(true), (a: Int) => ZIO.succeedLazy(a + 1))
         released <- release.get
-      } yield (result must_=== 43) and (released must_=== true)
+      } yield assert(result == 43, released)
     }
 
-  def testUncurriedBracket_ =
+  def testUncurriedBracket_() =
     unsafeRun {
       for {
         release  <- Ref.make(false)
         result   <- IO.succeed(42).bracket_(release.set(true), ZIO.succeedLazy(0))
         released <- release.get
-      } yield (result must_=== 0) and (released must_=== true)
+      } yield assert(result == 0, released)
     }
 
-  def testUncurriedBracketExit =
+  def testUncurriedBracketExit() =
     unsafeRun {
       for {
         release <- Ref.make(false)
@@ -376,10 +396,10 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
                    (_: Int) => IO.succeed(0L)
                  )
         released <- release.get
-      } yield (result must_=== 0L) and (released must_=== true)
+      } yield assert(result == 0L, released)
     }
 
-  def testBracketExitErrorHandling = {
+  def testBracketExitErrorHandling() = {
     val releaseDied = new RuntimeException("release died")
     val exit: Exit[String, Int] = unsafeRunSync {
       ZIO.bracketExit[Any, String, Int, Int](
@@ -389,9 +409,9 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
       )
     }
 
-    exit.fold[Result](
-      cause => (cause.failures must_=== List("use failed")) and (cause.defects must_=== List(releaseDied)),
-      value => failure(s"unexpectedly completed with value $value")
+    exit.fold[Unit](
+      cause => assert(cause.failures == List("use failed"), cause.defects == List(releaseDied)),
+      value => assert(s"unexpectedly completed with value $value" == "") //fails
     )
   }
 
@@ -404,35 +424,35 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
     class E
     class E1 extends E
 
-    def infersEType1: ZIO[R, E, B] = {
+    def infersEType1(): ZIO[R, E, B] = {
       val acquire: ZIO[R, E, A]            = ???
       val release: A => ZIO[R, Nothing, _] = ???
       val use: A => ZIO[R, E1, B]          = ???
       ZIO.bracket(acquire, release, use)
     }
 
-    def infersEType2: ZIO[R, E, B] = {
+    def infersEType2(): ZIO[R, E, B] = {
       val acquire: ZIO[R, E1, A]           = ???
       val release: A => ZIO[R, Nothing, _] = ???
       val use: A => ZIO[R, E, B]           = ???
       ZIO.bracket(acquire, release, use)
     }
 
-    def infersRType1: ZIO[R2, E, B] = {
+    def infersRType1(): ZIO[R2, E, B] = {
       val acquire: ZIO[R, E, A]             = ???
       val release: A => ZIO[R1, Nothing, _] = ???
       val use: A => ZIO[R2, E, B]           = ???
       ZIO.bracket(acquire, release, use)
     }
 
-    def infersRType2: ZIO[R2, E, B] = {
+    def infersRType2(): ZIO[R2, E, B] = {
       val acquire: ZIO[R2, E, A]            = ???
       val release: A => ZIO[R1, Nothing, _] = ???
       val use: A => ZIO[R, E, B]            = ???
       ZIO.bracket(acquire, release, use)
     }
 
-    def infersRType3: ZIO[R2, E, B] = {
+    def infersRType3(): ZIO[R2, E, B] = {
       val acquire: ZIO[R1, E, A]            = ???
       val release: A => ZIO[R2, Nothing, _] = ???
       val use: A => ZIO[R, E, B]            = ???
@@ -440,7 +460,7 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
     }
   }
 
-  def testForeach_Order = {
+  def testForeach_Order() = {
     val as = List(1, 2, 3, 4, 5)
     val r = unsafeRun {
       for {
@@ -449,10 +469,10 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         rs  <- ref.get
       } yield rs
     }
-    r must_== as
+    assert(r == as)
   }
 
-  def testForeach_Twice = {
+  def testForeach_Twice() = {
     val as = List(1, 2, 3, 4, 5)
     val r = unsafeRun {
       for {
@@ -463,10 +483,10 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         sum <- ref.get
       } yield sum
     }
-    r must_=== 30
+    assert(r == 30)
   }
 
-  def testForeachPar_Full = {
+  def testForeachPar_Full() = {
     val as = Seq(1, 2, 3, 4, 5)
     val r = unsafeRun {
       for {
@@ -475,11 +495,10 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         rs  <- ref.get
       } yield rs
     }
-    r must have length as.length
-    r must containTheSameElementsAs(as)
+    assert(r.length == as.length, r.sameElements(as))
   }
 
-  def testForeachParN_Full = {
+  def testForeachParN_Full() = {
     val as = Seq(1, 2, 3, 4, 5)
     val r = unsafeRun {
       for {
@@ -488,133 +507,140 @@ class IOSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntim
         rs  <- ref.get
       } yield rs
     }
-    r must have length as.length
-    r must containTheSameElementsAs(as)
+    assert(r.length == as.length, r.forall(as.contains), as.forall(r.contains))
   }
 
-  def testFilterOrElse = {
+  def testFilterOrElse() = {
     val goodCase = unsafeRun(
-      exactlyOnce(0)(_.filterOrElse(_ == 0)(a => ZIO.fail(s"$a was not 0"))).sandbox.either
-    ) must_=== Right(0)
+      exactlyOnce[Any, Int, Int](0)(_.filterOrElse(_ == 0)(a => ZIO.fail(s"$a was not 0"))).sandbox.either
+    )
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.filterOrElse(_ == 0)(a => ZIO.fail(s"$a was not 0"))).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("1 was not 0"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and badCase
+    assert(goodCase == Right(0), badCase == Left(Left("1 was not 0")))
   }
 
-  def testFilterOrElse_ = {
+  def testFilterOrElse_() = {
     val goodCase = unsafeRun(
       exactlyOnce(0)(_.filterOrElse_(_ == 0)(ZIO.fail("Predicate failed!"))).sandbox.either
-    ) must_=== Right(0)
+    )
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.filterOrElse_(_ == 0)(ZIO.fail("Predicate failed!"))).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Predicate failed!"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and badCase
+    assert(goodCase == Right(0), badCase == Left(Left("Predicate failed!")))
   }
 
-  def testFilterOrFail = {
+  def testFilterOrFail() = {
     val goodCase = unsafeRun(
       exactlyOnce(0)(_.filterOrFail(_ == 0)("Predicate failed!")).sandbox.either
-    ) must_=== Right(0)
+    )
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.filterOrFail(_ == 0)("Predicate failed!")).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Predicate failed!"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and badCase
+    assert(goodCase == Right(0), badCase == Left(Left("Predicate failed!")))
   }
 
-  def testCollect = {
+  def testCollect() = {
     val goodCase = unsafeRun(
       exactlyOnce(0)(_.collect(s"value was not 0")({ case v @ 0 => v })).sandbox.either
-    ) must_=== Right(0)
+    )
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.collect(s"value was not 0")({ case v @ 0 => v })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("value was not 0"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and badCase
+    assert(goodCase == Right(0), badCase == Left(Left("value was not 0")))
   }
 
-  def testCollectM = {
+  def testCollectM() = {
     val goodCase = unsafeRun(
-      exactlyOnce(0)(_.collectM("Predicate failed!")({ case v @ 0 => ZIO.succeed(v) })).sandbox.either
-    ) must_=== Right(0)
+      exactlyOnce[Any, Int, Int](0)(_.collectM("Predicate failed!")({ case v @ 0 => ZIO.succeed(v) })).sandbox.either
+    )
 
     val partialBadCase = unsafeRun(
       exactlyOnce(0)(_.collectM("Predicate failed!")({ case v @ 0 => ZIO.fail("Partial failed!") })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Partial failed!"))
+    ).left.map(_.failureOrCause)
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.collectM("Predicate failed!")({ case v @ 0 => ZIO.succeed(v) })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Predicate failed!"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and partialBadCase and badCase
+    assert(
+      goodCase == Right(0),
+      partialBadCase == Left(Left("Partial failed!")),
+      badCase == Left(Left("Predicate failed!"))
+    )
   }
 
-  def testReject = {
+  def testReject() = {
     val goodCase = unsafeRun(
       exactlyOnce(0)(_.reject({ case v if v != 0 => "Partial failed!" })).sandbox.either
-    ) must_=== Right(0)
+    )
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.reject({ case v if v != 0 => "Partial failed!" })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Partial failed!"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and badCase
+    assert(goodCase == Right(0), badCase == Left(Left("Partial failed!")))
   }
 
-  def testRejectM = {
+  def testRejectM() = {
     val goodCase = unsafeRun(
-      exactlyOnce(0)(_.rejectM({ case v if v != 0 => ZIO.succeed("Partial failed!") })).sandbox.either
-    ) must_=== Right(0)
+      exactlyOnce[Any, Int, Int](0)(_.rejectM({ case v if v != 0 => ZIO.succeed("Partial failed!") })).sandbox.either
+    )
 
     val partialBadCase = unsafeRun(
       exactlyOnce(1)(_.rejectM({ case v if v != 0 => ZIO.fail("Partial failed!") })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Partial failed!"))
+    ).left.map(_.failureOrCause)
 
     val badCase = unsafeRun(
       exactlyOnce(1)(_.rejectM({ case v if v != 0 => ZIO.fail("Partial failed!") })).sandbox.either
-    ).left.map(_.failureOrCause) must_=== Left(Left("Partial failed!"))
+    ).left.map(_.failureOrCause)
 
-    goodCase and partialBadCase and badCase
+    assert(
+      goodCase == Right(0),
+      partialBadCase == Left(Left("Partial failed!")),
+      badCase == Left(Left("Partial failed!"))
+    )
   }
 
-  def testForeachParN_Threads = {
+  def testForeachParN_Threads() = {
     val n   = 10L
     val seq = 0 to 100000
     val res = unsafeRun(IO.foreachParN(n)(seq)(UIO.succeed))
-    res must be_===(seq)
+    assert(res == seq)
   }
 
-  def testForeachParN_Parallel = {
+  def testForeachParN_Parallel() = {
     val io = for {
       p <- Promise.make[Nothing, Unit]
       _ <- UIO.foreachParN(2)(List(UIO.never, p.succeed(())))(a => a).fork
       _ <- p.await
     } yield true
-    unsafeRun(io)
+    assert(unsafeRun(io))
   }
 
-  def testForeachParN_Error = {
+  def testForeachParN_Error() = {
     val ints = List(1, 2, 3, 4, 5, 6)
     val odds = ZIO.foreachParN(4)(ints) { n =>
       if (n % 2 != 0) ZIO.succeed(n) else ZIO.fail("not odd")
     }
-    unsafeRun(odds.either) must_=== Left("not odd")
+    assert(unsafeRun(odds.either) == Left("not odd"))
   }
 
-  def testForeachParN_Interruption = {
+  def testForeachParN_Interruption() = {
     val actions = List(
       ZIO.never,
       ZIO.succeed(1),
       ZIO.fail("C")
     )
     val io = ZIO.foreachParN(4)(actions)(a => a)
-    unsafeRun(io.either) must_=== Left("C")
+    assert(unsafeRun(io.either) == Left("C"))
   }
 }

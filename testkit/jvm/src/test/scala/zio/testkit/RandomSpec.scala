@@ -2,79 +2,93 @@ package zio.testkit
 
 import zio.random.Random
 import zio.testkit.TestRandom.Data
-import zio.{ TestRuntime, UIO, _ }
+import zio.{ UIO, _ }
+import utest._
 
-class RandomSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime {
+object RandomSpec extends TestRuntime {
 
-  def is = "RandomSpec".title ^ s2"""
-      Returns next int when data is:
-        single value  $nextIntWithSingleValue
-        empty         $nextIntWithEmptyData
-        default       $nextIntWithDefault
-        sequence      $nextIntWithSequence
-        respect limit $nextIntWithLimit
-      Returns next boolean when data is:
-        single value $nextBooleanWithSingleValue
-        empty        $nextBooleanWithEmptyData
-        default      $nextBooleanWithDefault
-        sequence     $nextBooleanWithSequence
-      Returns next double when data is:
-        single value $nextDoubleWithSingleValue
-        empty        $nextDoubleWithEmptyData
-        default      $nextDoubleWithDefault
-        sequence     $nextDoubleWithSequence
-      Returns next Gaussian:
-        same as double $nextGaussian
-      Returns next float when data is:
-        single value $nextFloatWithSingleValue
-        empty        $nextFloatWithEmptyData
-        default      $nextFloatWithDefault
-        sequence     $nextFloatWithSequence
-      Returns next long when data is:
-        single value $nextLongWithSingleValue
-        empty        $nextLongWithEmptyData
-        default      $nextLongWithDefault
-        sequence     $nextLongWithSequence
-      Returns next char when data is:
-        single value $nextCharWithSingleValue
-        empty        $nextCharWithEmptyData
-        default      $nextCharWithDefault
-        sequence     $nextCharWithSequence
-      Returns next string when data is:
-        single value                                      $nextStringWithSingleValue
-        empty                                             $nextStringWithEmptyData
-        default                                           $nextStringWithDefault
-        sequence                                          $nextStringWithSequence
-        single value - respect length                     $nextStringWithLength
-        single value - length > length of the next string $nextStringLengthIsOver
-      Returns next bytes when data is:
-        single value                                      $nextBytesWithSingleValue
-        empty                                             $nextBytesWithEmptyData
-        default                                           $nextBytesWithDefault
-        sequence                                          $nextBytesWithSequence
-        single value - length < number of bytes           $nextBytesWithLength
-        single value - length > length of the next array  $nextBytesLengthIsOver
+  override def tests: Tests = Tests {
+    test("Returns next int when data is") {
+      test("single value") - nextIntWithSingleValue
+      test("empty") - nextIntWithEmptyData
+      test("default") - nextIntWithDefault
+      test("sequence") - nextIntWithSequence
+      test("respect limit") - nextIntWithLimit
+    }
+    test("Returns next boolean when data is") {
+      test("single value") - nextBooleanWithSingleValue
+      test("empty") - nextBooleanWithEmptyData
+      test("default") - nextBooleanWithDefault
+      test("sequence") - nextBooleanWithSequence
+    }
+    test("Returns next double when data is") {
+      test("single value") - nextDoubleWithSingleValue
+      test("empty") - nextDoubleWithEmptyData
+      test("default") - nextDoubleWithDefault
+      test("sequence") - nextDoubleWithSequence
+    }
+    test("Returns next Gaussian") {
+      test("same as double") - nextGaussian
+    }
+    test("Returns next float when data is") {
+      test("single value") - nextFloatWithSingleValue
+      test("empty") - nextFloatWithEmptyData
+      test("default") - nextFloatWithDefault
+      test("sequence") - nextFloatWithSequence
+    }
+    test("Returns next long when data is") {
+      test("single value") - nextLongWithSingleValue
+      test("empty") - nextLongWithEmptyData
+      test("default") - nextLongWithDefault
+      test("sequence") - nextLongWithSequence
+    }
+    test("Returns next char when data is") {
+      test("single value") - nextCharWithSingleValue
+      test("empty") - nextCharWithEmptyData
+      test("default") - nextCharWithDefault
+      test("sequence") - nextCharWithSequence
+    }
+    test("Returns next string when data is") {
+      test("single value") - nextStringWithSingleValue
+      test("empty") - nextStringWithEmptyData
+      test("default") - nextStringWithDefault
+      test("sequence") - nextStringWithSequence
+      test("single value -respect length") - nextStringWithLength
+      test("single value -length > length of the next string") - nextStringLengthIsOver
+    }
+    test("Returns next bytes when data is") {
+      test("single value") - nextBytesWithSingleValue
+      test("empty") - nextBytesWithEmptyData
+      test("default") - nextBytesWithDefault
+      test("sequence") - nextBytesWithSequence
+      test("single value -length < number of bytes") - nextBytesWithLength
+      test("single value -length > length of the next array") - nextBytesLengthIsOver
+    }
 
-      Shuffle returns the same list in the same order
-        always when list contains:
-          no elements    $shuffleListWithNoElements
-          single element $shuffleListWithSingleElement
-        sometimes when list contains:
-          two elements   $shuffleListWithTwoElementsSame
-          three elements $shuffleListWithThreeElementsSame
-          many elements  $shuffleListWithManyElementsSame
+    test("Shuffle returns the same list in the same order") {
+      test("always when list contains") {
+        test("no elements") - shuffleListWithNoElements
+        test("single element") - shuffleListWithSingleElement
+      }
+      test("sometimes when list contains") {
+        test("two elements") - shuffleListWithTwoElementsSame
+        test("three elements") - shuffleListWithThreeElementsSame
+        test("many elements") - shuffleListWithManyElementsSame
+      }
+    }
+    test("Shuffle returns the same list in diffrent order") {
+      test("sometimes when list contains") {
+        test("two elements") - shuffleListWithTwoElementsReversed
+        test("three elements") - shuffleListWithThreeElementsReversed
+        test("many elements") - shuffleListWithManyElementsReversed
+      }
+    }
+  }
 
-      Shuffle returns the same list in diffrent order
-        sometimes when list contains:
-          two elements   $shuffleListWithTwoElementsReversed
-          three elements $shuffleListWithThreeElementsReversed
-          many elements  $shuffleListWithManyElementsReversed
-     """
-
-  def nextIntWithEmptyData =
+  def nextIntWithEmptyData() =
     checkWith(Data(integers = Nil), List(TestRandom.defaultInteger))(_.nextInt)
 
-  def nextIntWithLimit =
+  def nextIntWithLimit() =
     unsafeRun(
       for {
         ref        <- Ref.make(Data(integers = List(5, 6, 7)))
@@ -82,115 +96,115 @@ class RandomSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRu
         next1      <- testRandom.nextInt(2)
         next2      <- testRandom.nextInt(6)
         next3      <- testRandom.nextInt(99)
-      } yield List(next1, next2, next3) must_=== List(2, 6, 7)
+      } yield assert(List(next1, next2, next3) == List(2, 6, 7))
     )
 
-  def nextIntWithDefault =
+  def nextIntWithDefault() =
     checkWith(Data(), List(1, 2, 3, 4, 5))(_.nextInt)
 
-  def nextIntWithSingleValue =
+  def nextIntWithSingleValue() =
     checkWith(Data(integers = List(1)), List(1, 1, 1, 1, 1))(_.nextInt)
 
-  def nextIntWithSequence =
+  def nextIntWithSequence() =
     checkWith(Data(integers = List(1, 2, 3)), List(1, 2, 3, 1, 2))(_.nextInt)
 
-  def nextBooleanWithEmptyData =
+  def nextBooleanWithEmptyData() =
     checkWith(Data(booleans = Nil), List(TestRandom.defaultBoolean))(_.nextBoolean)
 
-  def nextBooleanWithDefault =
+  def nextBooleanWithDefault() =
     checkWith(Data(), List(true, false, true, false, true))(_.nextBoolean)
 
-  def nextBooleanWithSingleValue =
+  def nextBooleanWithSingleValue() =
     checkWith(Data(booleans = List(false)), List(false, false, false, false, false))(_.nextBoolean)
 
-  def nextBooleanWithSequence =
+  def nextBooleanWithSequence() =
     checkWith(Data(booleans = List(true, true, false)), List(true, true, false, true, true))(_.nextBoolean)
 
-  def nextDoubleWithEmptyData =
+  def nextDoubleWithEmptyData() =
     checkWith(Data(doubles = Nil), List(TestRandom.defaultDouble))(_.nextDouble)
 
-  def nextDoubleWithDefault =
+  def nextDoubleWithDefault() =
     checkWith(Data(), List(0.1d, 0.2d, 0.3d, 0.4d, 0.5d))(_.nextDouble)
 
-  def nextDoubleWithSingleValue =
+  def nextDoubleWithSingleValue() =
     checkWith(Data(doubles = List(0.1d)), List(0.1d, 0.1d, 0.1d, 0.1d, 0.1d))(_.nextDouble)
 
-  def nextDoubleWithSequence =
+  def nextDoubleWithSequence() =
     checkWith(Data(doubles = List(0.1d, 0.2d, 0.3d)), List(0.1d, 0.2d, 0.3d, 0.1d, 0.2d))(_.nextDouble)
 
-  def nextGaussian =
+  def nextGaussian() =
     checkWith(Data(doubles = List(0.1, 0.2)), List(0.1, 0.2, 0.1))(_.nextGaussian)
 
-  def nextFloatWithEmptyData =
+  def nextFloatWithEmptyData() =
     checkWith(Data(floats = Nil), List(TestRandom.defaultFloat))(_.nextFloat)
 
-  def nextFloatWithDefault =
+  def nextFloatWithDefault() =
     checkWith(Data(), List(0.1f, 0.2f, 0.3f, 0.4f, 0.5f))(_.nextFloat)
 
-  def nextFloatWithSingleValue =
+  def nextFloatWithSingleValue() =
     checkWith(Data(floats = List(0.1f)), List(0.1f, 0.1f, 0.1f, 0.1f, 0.1f))(_.nextFloat)
 
-  def nextFloatWithSequence =
+  def nextFloatWithSequence() =
     checkWith(Data(floats = List(0.1f, 0.2f, 0.3f)), List(0.1f, 0.2f, 0.3f, 0.1f, 0.2f))(_.nextFloat)
 
-  def nextLongWithEmptyData =
+  def nextLongWithEmptyData() =
     checkWith(Data(longs = Nil), List(TestRandom.defaultLong))(_.nextLong)
 
-  def nextLongWithDefault =
+  def nextLongWithDefault() =
     checkWith(Data(), List(1L, 2L, 3L, 4L, 5L))(_.nextLong)
 
-  def nextLongWithSingleValue =
+  def nextLongWithSingleValue() =
     checkWith(Data(longs = List(1L)), List(1L, 1L, 1L, 1L, 1L))(_.nextLong)
 
-  def nextLongWithSequence =
+  def nextLongWithSequence() =
     checkWith(Data(longs = List(1L, 2L, 3L)), List(1L, 2L, 3L, 1L, 2L))(_.nextLong)
 
-  def nextCharWithEmptyData =
+  def nextCharWithEmptyData() =
     checkWith(Data(chars = Nil), List(TestRandom.defaultChar))(_.nextPrintableChar)
 
-  def nextCharWithDefault =
+  def nextCharWithDefault() =
     checkWith(Data(), List('a', 'b', 'c', 'd', 'e'))(_.nextPrintableChar)
 
-  def nextCharWithSingleValue =
+  def nextCharWithSingleValue() =
     checkWith(Data(chars = List('a')), List('a', 'a', 'a', 'a', 'a'))(_.nextPrintableChar)
 
-  def nextCharWithSequence =
+  def nextCharWithSequence() =
     checkWith(Data(chars = List('a', 'b', 'c')), List('a', 'b', 'c', 'a', 'b'))(_.nextPrintableChar)
 
-  def nextStringWithEmptyData =
+  def nextStringWithEmptyData() =
     checkWith(Data(strings = Nil), List(TestRandom.defaultString))(_.nextString(1))
 
-  def nextStringWithLength =
+  def nextStringWithLength() =
     checkWith(Data(strings = List("longer string")), List("longer s"))(_.nextString(8))
 
-  def nextStringLengthIsOver =
+  def nextStringLengthIsOver() =
     checkWith(Data(strings = List("longer string")), List("longer string"))(_.nextString(99))
 
-  def nextStringWithDefault =
+  def nextStringWithDefault() =
     checkWith(Data(), List("a", "b", "c", "d", "e"))(_.nextString(1))
 
-  def nextStringWithSingleValue =
+  def nextStringWithSingleValue() =
     checkWith(Data(strings = List("a")), List("a", "a", "a", "a", "a"))(_.nextString(1))
 
-  def nextStringWithSequence =
+  def nextStringWithSequence() =
     checkWith(Data(strings = List("a", "b", "c")), List("a", "b", "c", "a", "b"))(_.nextString(1))
 
-  def nextBytesWithEmptyData =
+  def nextBytesWithEmptyData() =
     checkWith(Data(bytes = Nil), List(TestRandom.defaultBytes))(_.nextBytes(1))
 
-  def nextBytesLengthIsOver =
+  def nextBytesLengthIsOver() =
     checkWith(Data(bytes = Nil), List(TestRandom.defaultBytes))(_.nextBytes(99))
 
-  def nextBytesWithLength =
+  def nextBytesWithLength() =
     checkWith(Data(bytes = List(Chunk(1.toByte, 2.toByte, 3.toByte))), List(Chunk(1.toByte, 2.toByte)))(_.nextBytes(2))
 
-  def nextBytesWithDefault =
+  def nextBytesWithDefault() =
     checkWith(Data(), List(1, 2, 3, 4, 5).map(i => Chunk(i.toByte)))(_.nextBytes(1))
 
-  def nextBytesWithSingleValue =
+  def nextBytesWithSingleValue() =
     checkWith(Data(bytes = List(Chunk(1.toByte))), List(1, 1, 1, 1, 1).map(i => Chunk(i.toByte)))(_.nextBytes(1))
 
-  def nextBytesWithSequence =
+  def nextBytesWithSequence() =
     checkWith(Data(bytes = List(1, 2, 3).map(i => Chunk(i.toByte))), List(1, 2, 3, 1, 2).map(i => Chunk(i.toByte)))(
       _.nextBytes(1)
     )
@@ -201,31 +215,31 @@ class RandomSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRu
         ref           <- Ref.make(data)
         testRandom    <- IO.succeed(TestRandom(ref))
         randomResults <- IO.foreach(1 to expected.length)(_ => f(testRandom))
-      } yield randomResults must_=== expected
+      } yield assert(randomResults == expected)
     )
 
-  def shuffleListWithNoElements =
+  def shuffleListWithNoElements() =
     checkShuffleSame(List.empty[Int])
 
-  def shuffleListWithSingleElement =
+  def shuffleListWithSingleElement() =
     checkShuffleSame(List(1))
 
-  def shuffleListWithTwoElementsSame =
+  def shuffleListWithTwoElementsSame() =
     checkShuffleSame(List(1, 2))
 
-  def shuffleListWithTwoElementsReversed =
+  def shuffleListWithTwoElementsReversed() =
     checkShuffleReversed(List(1, 2))
 
-  def shuffleListWithThreeElementsSame =
+  def shuffleListWithThreeElementsSame() =
     checkShuffleSame(List(1, 2, 3))
 
-  def shuffleListWithThreeElementsReversed =
+  def shuffleListWithThreeElementsReversed() =
     checkShuffleReversed(List(1, 2, 3))
 
-  def shuffleListWithManyElementsSame =
+  def shuffleListWithManyElementsSame() =
     checkShuffleSame((1 to 100).toList)
 
-  def shuffleListWithManyElementsReversed =
+  def shuffleListWithManyElementsReversed() =
     checkShuffleReversed((1 to 100).toList)
 
   def checkShuffleSame[A](input: List[A]) = {
@@ -237,7 +251,7 @@ class RandomSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRu
         ref        <- Ref.make(Data(integers = identitySwapIndexes))
         testRandom <- IO.succeed(TestRandom(ref))
         shuffled   <- testRandom.shuffle(input)
-      } yield shuffled must_=== input
+      } yield assert(shuffled == input)
     )
   }
 
@@ -253,7 +267,7 @@ class RandomSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRu
         ref        <- Ref.make(Data(integers = reverseSwapIndexes))
         testRandom <- IO.succeed(TestRandom(ref))
         shuffled   <- testRandom.shuffle(input)
-      } yield shuffled must_=== input.reverse
+      } yield assert(shuffled == input.reverse)
     )
   }
 }

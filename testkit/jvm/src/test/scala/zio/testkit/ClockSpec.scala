@@ -2,116 +2,116 @@ package zio.testkit
 
 import java.util.concurrent.TimeUnit
 
+import utest._
 import zio._
 import zio.duration._
 
-class ClockSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime {
+object ClockSpec extends TestRuntime {
+  override def tests: Tests = Tests {
+    test("ClockSpec") {
+      test("Sleep does sleep instantly") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            result    <- testClock.sleep(10.hours).timeout(100.milliseconds)
+          } yield assert(result.nonEmpty)
+        )
 
-  def is = "ClockSpec".title ^ s2"""
-      Sleep does sleep instantly                        $e1
-      Sleep passes nanotime correctly                   $e2
-      Sleep passes currentTime correctly                $e3
-      Sleep passes currentDateTime correctly            $e4
-      Sleep correctly records sleeps                    $e5
-      Adjust correctly advances nanotime                $e6
-      Adjust correctly advances currentTime             $e7
-      Adjust correctly advances currentDateTime         $e8
-      Adjust does not produce sleeps                    $e9
-     """
+      }
+      test("Sleep passes nanotime correctly") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.nanoTime
+            _         <- testClock.sleep(1.millis)
+            time2     <- testClock.nanoTime
+          } yield assert((time2 - time1) == 1000000L)
+        )
 
-  def e1 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        result    <- testClock.sleep(10.hours).timeout(100.milliseconds)
-      } yield result.nonEmpty must beTrue
-    )
+      }
+      test("Sleep passes currentTime correctly") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.currentTime(TimeUnit.MILLISECONDS)
+            _         <- testClock.sleep(1.millis)
+            time2     <- testClock.currentTime(TimeUnit.MILLISECONDS)
+          } yield assert((time2 - time1) == 1L)
+        )
 
-  def e2 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.nanoTime
-        _         <- testClock.sleep(1.millis)
-        time2     <- testClock.nanoTime
-      } yield (time2 - time1) must_== 1000000L
-    )
+      }
+      test("Sleep passes currentDateTime correctly") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.currentDateTime
+            _         <- testClock.sleep(1.millis)
+            time2     <- testClock.currentDateTime
+          } yield assert((time2.toInstant.toEpochMilli - time1.toInstant.toEpochMilli) == 1L)
+        )
 
-  def e3 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.currentTime(TimeUnit.MILLISECONDS)
-        _         <- testClock.sleep(1.millis)
-        time2     <- testClock.currentTime(TimeUnit.MILLISECONDS)
-      } yield (time2 - time1) must_== 1L
-    )
+      }
+      test("Sleep correctly records sleeps") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            _         <- testClock.sleep(1.millis)
+            sleeps    <- testClock.sleeps
+          } yield assert(sleeps == List(1.milliseconds))
+        )
 
-  def e4 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.currentDateTime
-        _         <- testClock.sleep(1.millis)
-        time2     <- testClock.currentDateTime
-      } yield (time2.toInstant.toEpochMilli - time1.toInstant.toEpochMilli) must_== 1L
-    )
+      }
+      test("Adjust correctly advances nanotime") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.nanoTime
+            _         <- testClock.adjust(1.millis)
+            time2     <- testClock.nanoTime
+          } yield assert((time2 - time1) == 1000000L)
+        )
 
-  def e5 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        _         <- testClock.sleep(1.millis)
-        sleeps    <- testClock.sleeps
-      } yield sleeps must_== List(1.milliseconds)
-    )
+      }
+      test("Adjust correctly advances currentTime") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.currentTime(TimeUnit.MILLISECONDS)
+            _         <- testClock.adjust(1.millis)
+            time2     <- testClock.currentTime(TimeUnit.MILLISECONDS)
+          } yield assert((time2 - time1) == 1L)
+        )
 
-  def e6 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.nanoTime
-        _         <- testClock.adjust(1.millis)
-        time2     <- testClock.nanoTime
-      } yield (time2 - time1) must_== 1000000L
-    )
+      }
+      test("Adjust correctly advances currentDateTime") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            time1     <- testClock.currentDateTime
+            _         <- testClock.adjust(1.millis)
+            time2     <- testClock.currentDateTime
+          } yield assert((time2.toInstant.toEpochMilli - time1.toInstant.toEpochMilli) == 1L)
+        )
 
-  def e7 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.currentTime(TimeUnit.MILLISECONDS)
-        _         <- testClock.adjust(1.millis)
-        time2     <- testClock.currentTime(TimeUnit.MILLISECONDS)
-      } yield (time2 - time1) must_== 1L
-    )
-
-  def e8 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        time1     <- testClock.currentDateTime
-        _         <- testClock.adjust(1.millis)
-        time2     <- testClock.currentDateTime
-      } yield (time2.toInstant.toEpochMilli - time1.toInstant.toEpochMilli) must_== 1L
-    )
-
-  def e9 =
-    unsafeRun(
-      for {
-        ref       <- Ref.make(TestClock.Zero)
-        testClock = TestClock(ref)
-        _         <- testClock.adjust(1.millis)
-        sleeps    <- testClock.sleeps
-      } yield sleeps must_== Nil
-    )
-
+      }
+      test("Adjust does not produce sleeps") - {
+        unsafeRun(
+          for {
+            ref       <- Ref.make(TestClock.Zero)
+            testClock = TestClock(ref)
+            _         <- testClock.adjust(1.millis)
+            sleeps    <- testClock.sleeps
+          } yield assert(sleeps == Nil)
+        )
+      }
+    }
+  }
 }

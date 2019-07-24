@@ -4,8 +4,7 @@ import java.util.concurrent.RejectedExecutionException
 
 import scala.concurrent.ExecutionContext
 import utest._
-
-import scala.reflect.ClassTag
+import zio.UtestScalacheckExtension
 
 final class TestExecutor(val submitResult: Boolean) extends Executor {
   val here: Boolean                       = true
@@ -37,17 +36,7 @@ object TestExecutor {
   }
 }
 
-object ExecutorSpec extends TestSuite {
-
-  //TODO: What is methods using this really testing?
-  private def interceptNot[T: ClassTag](expr: => Unit): Unit =
-    try {
-      expr
-    } catch {
-      case _: T         => assert(false) //Find a way to have actual error here
-      case _: Throwable => assert(true)
-    }
-
+object ExecutorSpec extends TestSuite with UtestScalacheckExtension {
   override def tests: Tests = Tests {
     test("Create the default unyielding executor and check that") {
       test("When converted to an EC, it reports Throwables to stdout") - {

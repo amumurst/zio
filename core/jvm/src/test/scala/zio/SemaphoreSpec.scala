@@ -4,81 +4,82 @@
 package zio
 
 import zio.duration._
+import utest._
 
-class SemaphoreSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime {
+object SemaphoreSpec extends TestRuntime {
 
-  def is =
-    "SemaphoreSpec".title ^ s2"""
-    Make a Semaphore and
-    verify that
-      `acquire` permits sequentially $e1
-      `acquire` permits in parallel $e2
-      `acquireN`s can be parallel with `releaseN`s $e3
-      individual `acquireN`s can be parallel with individual `releaseN`s $e4
-      semaphores and fibers play ball together $e5
-      `acquire` doesn't leak permits upon cancellation $e6
-      `withPermit` does not leak fibers or permits upon cancellation $e7
-    """
+  override def tests: Tests = Tests {
+    test("Make a Semaphore and verify that") {
+      test("`acquire` permits sequentially") - e1
+      test("`acquire` permits in parallel") - e2
+      test("`acquireN`s can be parallel with `releaseN`s") - e3
+      test("individual `acquireN`s can be parallel with individual `releaseN`s") - e4
+      test("semaphores and fibers play ball together") - e5
+      test("`acquire` doesn't leak permits upon cancellation") - e6
+      test("`withPermit` does not leak fibers or permits upon cancellation") - e7
+    }
+  }
 
-  def e1 = {
+  def e1() = {
     val n = 20L
     unsafeRun(for {
       semaphore <- Semaphore.make(n)
       available <- IO.foreach((0L until n).toList)(_ => semaphore.acquire) *> semaphore.available
-    } yield available must_=== 0)
+    } yield assert(available == 0))
   }
 
-  def e2 = {
+  def e2() = {
     val n = 20L
     unsafeRun(for {
       semaphore <- Semaphore.make(n)
       available <- IO.foreachPar((0L until n).toList)(_ => semaphore.acquire) *> semaphore.available
-    } yield available must_=== 0)
+    } yield assert(available == 0))
   }
 
-  def e3 =
+  def e3() =
     offsettingReleasesAcquires(
       (s, permits) => IO.foreach(permits)(s.acquireN).unit,
       (s, permits) => IO.foreach(permits.reverse)(s.releaseN).unit
     )
 
-  def e4 =
+  def e4() =
     offsettingReleasesAcquires(
       (s, permits) => IO.foreachPar(permits)(amount => s.acquireN(amount)).unit,
       (s, permits) => IO.foreachPar(permits.reverse)(amount => s.releaseN(amount)).unit
     )
 
-  def e5 = {
+  def e5() = {
     val n = 1L
     unsafeRun(for {
       s <- Semaphore.make(n).tap(_.acquire)
       _ <- s.release.fork
       _ <- s.acquire
-    } yield () must_=== (()))
+    } yield assert(true))
   }
 
   /**
    * Ported from @mpilquist work in Cats Effect (https://github.com/typelevel/cats-effect/pull/403)
    */
-  def e6 = {
+  def e6() = {
     val n = 1L
-    unsafeRun(for {
+    val result = unsafeRun(for {
       s       <- Semaphore.make(n)
       _       <- s.acquireN(2).timeout(1.milli).either
       permits <- s.release *> clock.sleep(10.millis) *> s.available
-    } yield permits) must_=== 2
+    } yield permits)
+    assert(result == 2)
   }
 
   /**
    * Ported from @mpilquist work in Cats Effect (https://github.com/typelevel/cats-effect/pull/403)
    */
-  def e7 = {
+  def e7() = {
     val n = 0L
     unsafeRun(for {
       s       <- Semaphore.make(n)
       _       <- s.withPermit(s.release).timeout(1.milli).either
       permits <- s.release *> clock.sleep(10.millis) *> s.available
-    } yield permits must_=== 1L)
+    } yield assert(permits == 1L))
   }
 
   def offsettingReleasesAcquires(
@@ -94,7 +95,7 @@ class SemaphoreSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Tes
       _             <- acquiresFiber.join
       _             <- releasesFiber.join
       count         <- semaphore.available
-    } yield count must_=== 0)
+    } yield assert(count == 0))
   }
 
 }

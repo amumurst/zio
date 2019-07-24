@@ -1,11 +1,12 @@
 package zio
 
 import java.io._
+import utest._
 
-class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime {
+object SerializableSpec extends TestRuntime {
 
   def serializeAndBack[T](a: T): IO[_, T] = {
-    import SerializableSpec._
+    import SerializableSpecMethods._
 
     for {
       obj       <- IO.effectTotal(serializeToBytes(a))
@@ -13,21 +14,20 @@ class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends 
     } yield returnObj
   }
 
-  def is =
-    "SerializableSpec".title ^ s2"""
-    Test all classes are Serializable
-    verify that
-      Semaphore is serializable $e1
-      Clock is serializable $e2
-      Queue is serializable $e3
-      Ref is serializable $e4
-      IO is serializable $e5
-      FunctionIO is serializable $e6
-      FiberStatus is serializable $e7
-      Duration is serializable $e8
-    """
+  override def tests: Tests = Tests {
+    test("Test all classes are Serializable") {
+      test("Semaphore is serializable") - e1
+      test("Clock is serializable") - e2
+      test("Queue is serializable") - e3
+      test("Ref is serializable") - e4
+      test("IO is serializable") - e5
+      test("FunctionIO is serializable") - e6
+      test("FiberStatus is serializable") - e7
+      test("Duration is serializable") - e8
+    }
+  }
 
-  def e1 = {
+  def e1() = {
     val n = 20L
     unsafeRun(
       for {
@@ -35,19 +35,19 @@ class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends 
         count       <- semaphore.available
         returnSem   <- serializeAndBack(semaphore)
         returnCount <- returnSem.available
-      } yield returnCount must_=== count
+      } yield assert(returnCount == count)
     )
   }
 
-  def e2 =
+  def e2() =
     unsafeRun(
       for {
         time1 <- clock.nanoTime
         time2 <- serializeAndBack(clock.nanoTime).flatten
-      } yield (time1 <= time2) must beTrue
+      } yield assert(time1 <= time2)
     )
 
-  def e3 = unsafeRun(
+  def e3() = unsafeRun(
     for {
       queue       <- Queue.bounded[Int](100)
       _           <- queue.offer(10)
@@ -55,43 +55,43 @@ class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends 
       v1          <- returnQueue.take
       _           <- returnQueue.offer(20)
       v2          <- returnQueue.take
-    } yield (v1 must_=== 10) and (v2 must_=== 20)
+    } yield assert(v1 == 10, v2 == 20)
   )
 
-  def e4 = {
+  def e4() = {
     val current = "This is some value"
     unsafeRun(
       for {
         ref       <- Ref.make(current)
         returnRef <- serializeAndBack(ref)
         value     <- returnRef.get
-      } yield value must_=== current
+      } yield assert(value == current)
     )
   }
 
-  def e5 = {
+  def e5() = {
     val list = List("1", "2", "3")
     val io   = IO.succeedLazy(list)
     unsafeRun(
       for {
         returnIO <- serializeAndBack(io)
         result   <- returnIO
-      } yield result must_=== list
+      } yield assert(result == list)
     )
   }
 
-  def e6 = {
+  def e6() = {
     import FunctionIO._
     val v = fromFunction[Int, Int](_ + 1)
     unsafeRun(
       for {
         returnKleisli <- serializeAndBack(v)
         computeV      <- returnKleisli.run(9)
-      } yield computeV must_=== 10
+      } yield assert(computeV == 10)
     )
   }
 
-  def e7 = {
+  def e7() = {
     val list = List("1", "2", "3")
     val io   = IO.succeed(list)
     val exit = unsafeRun(
@@ -105,10 +105,10 @@ class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends 
       case Exit.Success(value) => value
       case _                   => List.empty
     }
-    result must_=== list
+    assert(result == list)
   }
 
-  def e8 = {
+  def e8() = {
     import zio.duration.Duration
     val duration = Duration.fromNanos(1)
     val returnDuration = unsafeRun(
@@ -117,11 +117,11 @@ class SerializableSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends 
       } yield returnDuration
     )
 
-    returnDuration must_=== duration
+    assert(returnDuration == duration)
   }
 }
 
-object SerializableSpec {
+object SerializableSpecMethods {
   def serializeToBytes[T](a: T): Array[Byte] = {
     val bf  = new ByteArrayOutputStream()
     val oos = new ObjectOutputStream(bf)

@@ -61,10 +61,8 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.specs2"  %%% "specs2-core"          % "4.6.0" % Test,
-      "org.specs2"  %%% "specs2-scalacheck"    % "4.6.0" % Test,
-      "org.specs2"  %%% "specs2-matcher-extra" % "4.6.0" % Test,
-      "com.lihaoyi" %%% "utest"                % "0.7.1" % Test
+      "org.scalacheck" %%% "scalacheck" % "1.14.0" % Test,
+      "com.lihaoyi"    %%% "utest"      % "0.7.1"  % Test
     ),
     testFrameworks += new TestFramework("utest.runner.Framework"),
     publishArtifact in (Test, packageBin) := true
@@ -105,10 +103,8 @@ lazy val stacktracer = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings)
   .settings(
     libraryDependencies ++= Seq(
-      "org.specs2"  %%% "specs2-core"          % "4.6.0" % Test,
-      "org.specs2"  %%% "specs2-scalacheck"    % "4.6.0" % Test,
-      "org.specs2"  %%% "specs2-matcher-extra" % "4.6.0" % Test,
-      "com.lihaoyi" %%% "utest"                % "0.7.1" % Test
+      "org.scalacheck" %%% "scalacheck" % "1.14.0" % Test,
+      "com.lihaoyi"    %%% "utest"      % "0.7.1"  % Test
     ),
     testFrameworks += new TestFramework("utest.runner.Framework")
   )

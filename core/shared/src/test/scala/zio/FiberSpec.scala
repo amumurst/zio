@@ -1,19 +1,22 @@
 package zio
+import utest._
 
-class FiberSpec extends BaseCrossPlatformSpec {
-  def is =
-    "FiberSpec".title ^ s2"""
-    Create a new Fiber and
-      lift it into Managed                          $e1
-    `inheritLocals` works for Fiber created using:
-      `map`                                         $e2
-      `orElse`                                      $e3
-      `zip`                                         $e4
-    """
+object FiberSpec extends BaseCrossPlatformSpec2 with UtestScalacheckExtension {
+
+  override def tests: Tests = Tests {
+    test("Create a new Fiber and") {
+      test("lift it into Managed") - unsafeRun(e1)
+    }
+    test("`inheritLocals` works for Fiber created using") {
+      test("`map`") - unsafeRun(e2)
+      test("`orElse`") - unsafeRun(e3)
+      test("`zip`") - unsafeRun(e4)
+    }
+  }
 
   val (initial, update) = ("initial", "update")
 
-  def e1 =
+  def e1() =
     for {
       ref <- Ref.make(false)
       fiber <- withLatch { release =>
@@ -25,9 +28,9 @@ class FiberSpec extends BaseCrossPlatformSpec {
       _     <- fiber.toManaged.use(_ => IO.unit)
       _     <- fiber.await
       value <- ref.get
-    } yield value must beTrue
+    } yield assert(value)
 
-  def e2 =
+  def e2() =
     for {
       fiberRef <- FiberRef.make(initial)
       child <- withLatch { release =>
@@ -35,9 +38,9 @@ class FiberSpec extends BaseCrossPlatformSpec {
               }
       _     <- child.map(_ => ()).inheritFiberRefs
       value <- fiberRef.get
-    } yield value must beTheSameAs(update)
+    } yield assert(value == update)
 
-  def e3 =
+  def e3() =
     for {
       fiberRef  <- FiberRef.make(initial)
       semaphore <- Semaphore.make(2)
@@ -47,9 +50,9 @@ class FiberSpec extends BaseCrossPlatformSpec {
       _         <- semaphore.acquireN(2)
       _         <- child1.orElse(child2).inheritFiberRefs
       value     <- fiberRef.get
-    } yield value must beTheSameAs("child1")
+    } yield assert(value == "child1")
 
-  def e4 =
+  def e4() =
     for {
       fiberRef  <- FiberRef.make(initial)
       semaphore <- Semaphore.make(2)
@@ -59,5 +62,5 @@ class FiberSpec extends BaseCrossPlatformSpec {
       _         <- semaphore.acquireN(2)
       _         <- child1.zip(child2).inheritFiberRefs
       value     <- fiberRef.get
-    } yield value must beTheSameAs("child1")
+    } yield assert(value == "child1")
 }

@@ -3,123 +3,148 @@ package zio
 import java.util.concurrent.CountDownLatch
 
 import org.scalacheck.{ Gen, _ }
+import utest._
 
-import org.specs2.ScalaCheck
-import org.specs2.matcher.MatchResult
 import zio.Cause.Interrupt
 import zio.Exit.Failure
 import zio.duration._
 
 import scala.collection.mutable
 
-class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends TestRuntime with GenIO with ScalaCheck {
+object ZManagedSpec extends TestRuntime with GenIO with UtestScalacheckExtension {
   import Prop.forAll
 
-  def is = "ZManagedSpec".title ^ s2"""
-  ZManaged.make
-    Invokes cleanups in reverse order of acquisition. $invokesCleanupsInReverse
-    Properly performs parallel acquire and release. $parallelAcquireAndRelease
-    Constructs an uninterruptible Managed value. $uninterruptible
-  ZManaged.reserve
-    Interruption is possible when using this form. $interruptible
-  ZManaged.ensuring
-    Runs on successes $ensuringSuccess
-    Runs on failures $ensuringFailure
-    Works when finalizers have defects $ensuringWorksWithDefects
-  ZManaged.ensuringFirst
-    Runs on successes $ensuringFirstSuccess
-    Runs on failures $ensuringFirstFailure
-    Works when finalizers have defects $ensuringFirstWorksWithDefects
-  ZManaged.flatMap
-    All finalizers run even when finalizers have defects $flatMapFinalizersWithDefects
-  ZManaged.foldM
-    Runs onFailure on failure $foldMFailure
-    Runs onSuccess on success $foldMSuccess
-    Invokes cleanups $foldMCleanup
-    Invokes cleanups on interrupt 1 $foldMCleanupInterrupt1
-    Invokes cleanups on interrupt 2 $foldMCleanupInterrupt2
-    Invokes cleanups on interrupt 3 $foldMCleanupInterrupt3
-  ZManaged.foreach
-    Returns elements in the correct order $foreachOrder
-    Runs finalizers $foreachFinalizers
-    Invokes cleanups in reverse order of acquisition. $foreachFinalizerOrder
-  ZManaged.foreachPar
-    Returns elements in the correct order $foreachParOrder
-    Runs finalizers $foreachParFinalizers
-    Runs reservations in parallel $foreachParReservePar
-    Runs acquisitions in parallel $foreachParAcquirePar
-  ZManaged.foreachParN
-    Returns elements in the correct order $foreachParNOrder
-    Uses at most n fibers for reservation $foreachParNReservePar
-    Uses at most n fibers for acquisition $foreachParNAcquirePar
-    Runs finalizers $foreachParNFinalizers
-  ZManaged.foreach_
-    Runs finalizers $foreach_Finalizers
-  ZManaged.foreachPar_
-    Runs finalizers $foreachPar_Finalizers
-    Runs reservations in parallel $foreachPar_ReservePar
-    Runs acquisitions in parallel $foreachPar_AcquirePar
-  ZManaged.foreachParN_
-    Uses at most n fibers for reservation $foreachParN_ReservePar
-    Uses at most n fibers for acquisition $foreachParN_AcquirePar
-    Runs finalizers $foreachParN_Finalizers
-  ZManaged.fork
-    Runs finalizers properly $forkFinalizer
-    Acquires interruptibly   $forkAcquisitionIsInterruptible
-  ZManaged.fromAutoCloseable
-    Runs finalizers properly $fromAutoCloseable
-  ZManaged.mergeAll
-    Merges elements in the correct order $mergeAllOrder
-    Runs finalizers $mergeAllFinalizers
-  ZManaged.mergeAllPar
-    Merges elements in the correct order $mergeAllParOrder
-    Runs reservations in parallel $mergeAllParReservePar
-    Runs acquisitions in parallel $mergeAllParAcquirePar
-    Runs finalizers $mergeAllParFinalizers
-  ZManaged.mergeAllParN
-    Merges elements in the correct order $mergeAllParNOrder
-    Uses at most n fibers for reservation $mergeAllParNReservePar
-    Uses at most n fibers for acquisition $mergeAllParNAcquirePar
-    Runs finalizers $mergeAllParNFinalizers
-  ZManaged.onExit
-    Calls the cleanup $onExit
-  ZManaged.onExitFirst
-    Calls the cleanup $onExitFirst
-  ZManaged.reduceAll
-    Reduces elements in the correct order $reduceAllOrder
-    Runs finalizers $reduceAllFinalizers
-  ZManaged.reduceAllPar
-    Reduces elements in the correct order $reduceAllParOrder
-    Runs reservations in parallel $reduceAllParReservePar
-    Runs acquisitions in parallel $reduceAllParAcquirePar
-    Runs finalizers $reduceAllParFinalizers
-  ZManaged.reduceAllParN
-    Reduces elements in the correct order $reduceAllParNOrder
-    Uses at most n fibers for reservation $reduceAllParNReservePar
-    Uses at most n fibers for acquisition $reduceAllParNAcquirePar
-    Runs finalizers $reduceAllParNFinalizers
-  ZManged.retry
-    Should retry the reservation $retryReservation
-    Should retry the acquisition $retryAcquisition
-    Should share retries between both $retryBoth
-  ZManaged.timed
-    Should time both the reservation and the acquisition $timed
-  ZManaged.timeout
-    Returns Some if the timeout isn't reached $timeoutHappy
-    Returns None if the reservation takes longer than d $timeoutReservation
-    Returns None if the acquisition takes longer than d $timeoutAcquisition
-    Runs finalizers if returning None and reservation is successful $timeoutRunFinalizers1
-    Runs finalizers if returning None and reservation is successful after timeout $timeoutRunFinalizers2|
-  ZManaged.zipPar
-    Does not swallow exit cause if one reservation fails $zipParFailReservation
-    Runs finalizers if one acquisition fails $zipParFailAcquisitionRelease
-    Does not swallow acquisition if one acquisition fails $zipParFailAcquisition
-    Run finalizers if one reservation fails $zipParFailReservationRelease
-  Check flatten returns the same as ZManaged.flatten $testFlatten
-  Check absolve returns the same as ZManaged.absolve $testAbsolve
-  """
+  override def tests: Tests = Tests {
+    test("ZManaged.make") {
+      test("Invokes cleanups in reverse order of acquisition.") - invokesCleanupsInReverse
+      test("Properly performs parallel acquire and release.") - parallelAcquireAndRelease
+      test("Constructs an uninterruptible Managed value.") - uninterruptible
+    }
+    test("ZManaged.reserve") {
+      test("Interruption is possible when using this form.") - interruptible
+    }
+    test("ZManaged.ensuring") {
+      test("Runs on successes") - ensuringSuccess
+      test("Runs on failures") - ensuringFailure
+      test("Works when finalizers have defects") - ensuringWorksWithDefects
+    }
+    test("ZManaged.ensuringFirst") {
+      test("Runs on successes") - ensuringFirstSuccess
+      test("Runs on failures") - ensuringFirstFailure
+      test("Works when finalizers have defects") - ensuringFirstWorksWithDefects
+    }
+    test("ZManaged.flatMap") {
+      test("All finalizers run even when finalizers have defects") - flatMapFinalizersWithDefects
+    }
+    test("ZManaged.foldM") {
+      test("Runs onFailure on failure") - foldMFailure
+      test("Runs onSuccess on success") - foldMSuccess
+      test("Invokes cleanups") - foldMCleanup
+      test("Invokes cleanups on interrupt 1") - foldMCleanupInterrupt1
+      test("Invokes cleanups on interrupt 2") - foldMCleanupInterrupt2
+      test("Invokes cleanups on interrupt 3") - foldMCleanupInterrupt3
+    }
+    test("ZManaged.foreach") {
+      test("Returns elements in the correct order") - foreachOrder
+      test("Runs finalizers") - foreachFinalizers
+      test("Invokes cleanups in reverse order of acquisition.") - foreachFinalizerOrder
+    }
+    test("ZManaged.foreachPar") {
+      test("Returns elements in the correct order") - foreachParOrder
+      test("Runs finalizers") - foreachParFinalizers
+      test("Runs reservations in parallel") - foreachParReservePar
+      test("Runs acquisitions in parallel") - foreachParAcquirePar
+    }
+    test("ZManaged.foreachParN") {
+      test("Returns elements in the correct order") - foreachParNOrder
+      test("Uses at most n fibers for reservation") - foreachParNReservePar
+      test("Uses at most n fibers for acquisition") - foreachParNAcquirePar
+      test("Runs finalizers") - foreachParNFinalizers
+    }
+    test("ZManaged.foreach_") {
+      test("Runs finalizers") - foreach_Finalizers
+    }
+    test("ZManaged.foreachPar_") {
+      test("Runs finalizers") - foreachPar_Finalizers
+      test("Runs reservations in parallel") - foreachPar_ReservePar
+      test("Runs acquisitions in parallel") - foreachPar_AcquirePar
+    }
+    test("ZManaged.foreachParN_") {
+      test("Uses at most n fibers for reservation") - foreachParN_ReservePar
+      test("Uses at most n fibers for acquisition") - foreachParN_AcquirePar
+      test("Runs finalizers") - foreachParN_Finalizers
+    }
+    test("ZManaged.fork") {
+      test("Runs finalizers properly") - forkFinalizer
+      test("Acquires interruptibly  ") - forkAcquisitionIsInterruptible
+    }
+    test("ZManaged.fromAutoCloseable") {
+      test("Runs finalizers properly") - fromAutoCloseable
+    }
+    test("ZManaged.mergeAll") {
+      test("Merges elements in the correct order") - mergeAllOrder
+      test("Runs finalizers") - mergeAllFinalizers
+    }
+    test("ZManaged.mergeAllPar") {
+      test("Merges elements in the correct order") - mergeAllParOrder
+      test("Runs reservations in parallel") - mergeAllParReservePar
+      test("Runs acquisitions in parallel") - mergeAllParAcquirePar
+      test("Runs finalizers") - mergeAllParFinalizers
+    }
+    test("ZManaged.mergeAllParN") {
+      test("Merges elements in the correct order") - mergeAllParNOrder
+      test("Uses at most n fibers for reservation") - mergeAllParNReservePar
+      test("Uses at most n fibers for acquisition") - mergeAllParNAcquirePar
+      test("Runs finalizers") - mergeAllParNFinalizers
+    }
+    test("ZManaged.onExit") {
+      test("Calls the cleanup") - onExit
+    }
+    test("ZManaged.onExitFirst") {
+      test("Calls the cleanup") - onExitFirst
+    }
+    test("ZManaged.reduceAll") {
+      test("Reduces elements in the correct order") - reduceAllOrder
+      test("Runs finalizers") - reduceAllFinalizers
+    }
+    test("ZManaged.reduceAllPar") {
+      test("Reduces elements in the correct order") - reduceAllParOrder
+      test("Runs reservations in parallel") - reduceAllParReservePar
+      test("Runs acquisitions in parallel") - reduceAllParAcquirePar
+      test("Runs finalizers") - reduceAllParFinalizers
+    }
+    test("ZManaged.reduceAllParN") {
+      test("Reduces elements in the correct order") - reduceAllParNOrder
+      test("Uses at most n fibers for reservation") - reduceAllParNReservePar
+      test("Uses at most n fibers for acquisition") - reduceAllParNAcquirePar
+      test("Runs finalizers") - reduceAllParNFinalizers
+    }
+    test("ZManged.retry") {
+      test("Should retry the reservation") - retryReservation
+      test("Should retry the acquisition") - retryAcquisition
+      test("Should share retries between both") - retryBoth
+    }
+    test("ZManaged.timed") {
+      test("Should time both the reservation and the acquisition") - timed
+    }
+    test("ZManaged.timeout") {
+      test("Returns Some if the timeout isn't reached") - timeoutHappy
+      test("Returns None if the reservation takes longer than d") - timeoutReservation
+      test("Returns None if the acquisition takes longer than d") - timeoutAcquisition
+      test("Runs finalizers if returning None and reservation is successful") - timeoutRunFinalizers1
+      test("Runs finalizers if returning None and reservation is successful after timeout") - timeoutRunFinalizers2
+    }
+    test("ZManaged.zipPar") {
+      test("Does not swallow exit cause if one reservation fails") - zipParFailReservation
+      test("Runs finalizers if one acquisition fails") - zipParFailAcquisitionRelease
+      test("Does not swallow acquisition if one acquisition fails") - zipParFailAcquisition
+      test("Run finalizers if one reservation fails") - zipParFailReservationRelease
+      test("Check flatten returns the same as ZManaged.flatten") - testFlatten
+      test("Check absolve returns the same as ZManaged.absolve") - testAbsolve
+    }
+  }
 
-  private def invokesCleanupsInReverse = {
+  private def invokesCleanupsInReverse() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int) =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -136,24 +161,24 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(program)
 
-    effects must be_===(List(1, 2, 3, 3, 2, 1))
+    assert(effects == List(1, 2, 3, 3, 2, 1))
   }
 
-  private def parallelAcquireAndRelease = unsafeRun {
+  private def parallelAcquireAndRelease() = unsafeRun {
     for {
       log      <- Ref.make[List[String]](Nil)
       a        = ZManaged.make(UIO.succeed("A"))(_ => log.update("A" :: _))
       b        = ZManaged.make(UIO.succeed("B"))(_ => log.update("B" :: _))
       result   <- a.zipWithPar(b)(_ + _).use(ZIO.succeed)
       cleanups <- log.get
-    } yield (result must haveSize(2)) and (cleanups must haveSize(2))
+    } yield assert(result.size == 2, cleanups.size == 2)
   }
 
-  private def uninterruptible =
+  private def uninterruptible() =
     doInterrupt(io => ZManaged.make(io)(_ => IO.unit), None)
 
   // unlike make, reserve allows interruption
-  private def interruptible =
+  private def interruptible() =
     doInterrupt(io => ZManaged.reserve(Reservation(io, IO.unit)), Some(Failure(Interrupt)))
 
   private def doInterrupt(
@@ -168,58 +193,59 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       interruption       <- managedFiber.interrupt.timeout(5.seconds).either
     } yield interruption
 
-    unsafeRun(program) must be_===(Right(expected))
+    val result = unsafeRun(program)
+    assert(result == Right(expected))
   }
 
-  private def ensuringSuccess = unsafeRun {
+  private def ensuringSuccess() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.finalizer(effects.update("First" :: _)).ensuring(effects.update("Second" :: _)).use_(ZIO.unit)
       result  <- effects.get
-    } yield result must_=== List("Second", "First")
+    } yield assert(result == List("Second", "First"))
   }
 
-  private def ensuringFailure = unsafeRun {
+  private def ensuringFailure() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.fromEffect(ZIO.fail(())).ensuring(effects.update("Ensured" :: _)).use_(ZIO.unit).either
       result  <- effects.get
-    } yield result must_=== List("Ensured")
+    } yield assert(result == List("Ensured"))
   }
 
-  private def ensuringWorksWithDefects = unsafeRun {
+  private def ensuringWorksWithDefects() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.finalizer(ZIO.dieMessage("Boom")).ensuring(effects.update("Ensured" :: _)).use_(ZIO.unit).run
       result  <- effects.get
-    } yield result must_=== List("Ensured")
+    } yield assert(result == List("Ensured"))
   }
 
-  private def ensuringFirstSuccess = unsafeRun {
+  private def ensuringFirstSuccess() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.finalizer(effects.update("First" :: _)).ensuringFirst(effects.update("Second" :: _)).use_(ZIO.unit)
       result  <- effects.get
-    } yield result must_=== List("First", "Second")
+    } yield assert(result == List("First", "Second"))
   }
 
-  private def ensuringFirstFailure = unsafeRun {
+  private def ensuringFirstFailure() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.fromEffect(ZIO.fail(())).ensuringFirst(effects.update("Ensured" :: _)).use_(ZIO.unit).either
       result  <- effects.get
-    } yield result must_=== List("Ensured")
+    } yield assert(result == List("Ensured"))
   }
 
-  private def ensuringFirstWorksWithDefects = unsafeRun {
+  private def ensuringFirstWorksWithDefects() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _       <- ZManaged.finalizer(ZIO.dieMessage("Boom")).ensuringFirst(effects.update("Ensured" :: _)).use_(ZIO.unit).run
       result  <- effects.get
-    } yield result must_=== List("Ensured")
+    } yield assert(result == List("Ensured"))
   }
 
-  private def flatMapFinalizersWithDefects = unsafeRun {
+  private def flatMapFinalizersWithDefects() = unsafeRun {
     for {
       effects <- Ref.make[List[String]](Nil)
       _ <- (for {
@@ -231,10 +257,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
             _ <- ZManaged.finalizer(effects.update("Third" :: _))
           } yield ()).use_(ZIO.unit).run
       result <- effects.get
-    } yield (result must_=== List("First", "Second", "Third"))
+    } yield assert(result == List("First", "Second", "Third"))
   }
 
-  private def foldMFailure = {
+  private def foldMFailure() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): Managed[Unit, Unit] =
       Managed.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -244,10 +270,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use[Any, Unit, Unit](_ => IO.unit))
 
-    effects must be_===(List(1, 1))
+    assert(effects == (List(1, 1)))
   }
 
-  private def foldMSuccess = {
+  private def foldMSuccess() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): ZManaged[Any, Unit, Unit] =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -256,10 +282,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use[Any, Unit, Unit](_ => IO.unit))
 
-    effects must be_===(List(1, 1))
+    assert(effects == (List(1, 1)))
   }
 
-  private def foldMCleanup = {
+  private def foldMCleanup() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): ZManaged[Any, Unit, Unit] =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -268,10 +294,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use(_ => IO.unit).orElse(ZIO.unit))
 
-    effects must be_===(List(1, 2, 2, 1))
+    assert(effects == (List(1, 2, 2, 1)))
   }
 
-  private def foldMCleanupInterrupt1 = {
+  private def foldMCleanupInterrupt1() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): ZManaged[Any, Unit, Unit] =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -280,10 +306,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use(_ => IO.unit).orElse(ZIO.unit))
 
-    effects must be_===(List(1, 1))
+    assert(effects == (List(1, 1)))
   }
 
-  private def foldMCleanupInterrupt2 = {
+  private def foldMCleanupInterrupt2() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): ZManaged[Any, Unit, Unit] =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -292,10 +318,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use(_ => IO.interrupt.unit).orElse(ZIO.unit))
 
-    effects must be_===(List(1, 2, 2, 1))
+    assert(effects == (List(1, 2, 2, 1)))
   }
 
-  private def foldMCleanupInterrupt3 = {
+  private def foldMCleanupInterrupt3() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int): ZManaged[Any, Unit, Unit] =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -306,10 +332,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resource.use(_ => IO.unit).orElse(ZIO.unit))
 
-    effects must be_===(List(1, 2, 2, 1))
+    assert(effects == (List(1, 2, 2, 1)))
   }
 
-  private def fromAutoCloseable =
+  private def fromAutoCloseable() =
     unsafeRun {
       for {
         runtime <- ZIO.runtime[Any]
@@ -319,10 +345,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
         })
         _      <- ZManaged.fromAutoCloseable(closeable).use_(ZIO.unit)
         result <- effects.get
-      } yield result must_=== List("Closed")
+      } yield assert(result == List("Closed"))
     }
 
-  private def retryReservation = {
+  private def retryReservation() = {
     var retries = 0
 
     val managed = ZManaged.make(ZIO.effectTotal(retries += 1) *> { if (retries == 3) ZIO.unit else ZIO.fail(()) }) {
@@ -331,10 +357,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
     }
 
     unsafeRun(managed.retry(Schedule.recurs(3)).use(_ => ZIO.unit))
-    retries must be_===(3)
+    assert(retries == 3)
   }
 
-  private def retryAcquisition = {
+  private def retryAcquisition() = {
     var retries = 0
 
     val managed = ZManaged.reserve(Reservation(ZIO.effectTotal(retries += 1) *> {
@@ -342,10 +368,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
     }, ZIO.unit))
 
     unsafeRun(managed.retry(Schedule.recurs(3)).use(_ => ZIO.unit))
-    retries must be_===(3)
+    assert(retries == 3)
   }
 
-  private def retryBoth = {
+  private def retryBoth() = {
     var retries1 = 0
     var retries2 = 0
 
@@ -362,39 +388,43 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
     }
 
     unsafeRun(managed.retry(Schedule.recurs(6)).use(_ => ZIO.unit))
-    (retries1 must be_===(3)) && (retries2 must be_===(3))
+    assert(retries1 == 3, retries2 == 3)
   }
 
-  private def zipParFailAcquisition =
-    unsafeRunSync {
+  private def zipParFailAcquisition() = {
+
+    val result = unsafeRunSync {
       for {
         latch  <- Promise.make[Nothing, Unit]
         first  = ZManaged.fromEffect(latch.succeed(()) *> ZIO.sleep(Duration.Infinity))
         second = ZManaged.reserve(Reservation(latch.await *> ZIO.fail(()), ZIO.unit))
         _      <- first.zipPar(second).use_(ZIO.unit)
       } yield ()
-    } must be_===(Exit.Failure(Cause.Both(Cause.Fail(()), Cause.Interrupt)))
-
-  private def zipParFailReservation =
-    unsafeRunSync {
+    }
+    assert(result == Exit.Failure(Cause.Both(Cause.Fail(()), Cause.Interrupt)))
+  }
+  private def zipParFailReservation() = {
+    val result = unsafeRunSync {
       for {
         latch  <- Promise.make[Nothing, Unit]
         first  = ZManaged.fromEffect(latch.succeed(()) *> ZIO.sleep(Duration.Infinity))
         second = ZManaged.fromEffect(latch.await *> ZIO.fail(()))
         _      <- first.zipPar(second).use_(ZIO.unit)
       } yield ()
-    } must be_===(Exit.Failure(Cause.Both(Cause.Fail(()), Cause.Interrupt)))
+    }
+    assert(result == Exit.Failure(Cause.Both(Cause.Fail(()), Cause.Interrupt)))
+  }
 
-  private def zipParFailAcquisitionRelease = {
+  private def zipParFailAcquisitionRelease() = {
     var releases = 0
     val first    = ZManaged.unit
     val second   = ZManaged.reserve(Reservation(ZIO.fail(()), ZIO.effectTotal(releases += 1)))
 
     unsafeRunSync(first.zipPar(second).use(_ => ZIO.unit))
-    releases must be_===(1)
+    assert(releases == 1)
   }
 
-  private def zipParFailReservationRelease =
+  private def zipParFailReservationRelease() =
     unsafeRun {
       for {
         reserveLatch <- Promise.make[Nothing, Unit]
@@ -403,53 +433,55 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
         second       = ZManaged.fromEffect(reserveLatch.await *> ZIO.fail(()))
         _            <- first.zipPar(second).use_(ZIO.unit).orElse(ZIO.unit)
         count        <- releases.get
-      } yield count must be_===(1)
+      } yield assert(count == 1)
     }
 
-  private def testFlatten =
+  private def testFlatten() = propTest {
     forAll(Gen.alphaStr) { str =>
       unsafeRun((for {
         flatten1 <- ZManaged.succeedLazy(ZManaged.succeedLazy(str)).flatten
         flatten2 <- ZManaged.flatten(ZManaged.succeedLazy(ZManaged.succeedLazy(str)))
-      } yield flatten1 must ===(flatten2)).use[Any, Nothing, MatchResult[String]](result => ZIO.succeed(result)))
+      } yield flatten1 == flatten2).use[Any, Nothing, Boolean](result => ZIO.succeed(result)))
     }
+  }
 
-  private def testAbsolve =
+  private def testAbsolve() = propTest {
     forAll(Gen.alphaStr) { str =>
       val managedEither: ZManaged[Any, Nothing, Either[Nothing, String]] = ZManaged.succeed(Right(str))
       unsafeRun((for {
         abs1 <- managedEither.absolve
         abs2 <- ZManaged.absolve(managedEither)
-      } yield abs1 must ===(abs2)).use[Any, Nothing, MatchResult[String]](result => ZIO.succeed(result)))
+      } yield abs1 == abs2).use[Any, Nothing, Boolean](result => ZIO.succeed(result)))
     }
+  }
 
-  private def timeoutHappy =
+  private def timeoutHappy() =
     unsafeRun {
       val managed = ZManaged.make(ZIO.succeed(1))(_ => ZIO.unit)
-      managed.timeout(Duration.Infinity).use(res => ZIO.succeed(res must_=== (Some(1))))
+      managed.timeout(Duration.Infinity).use(res => ZIO.succeed(res == Some(1)))
     }
 
-  private def timeoutReservation =
+  private def timeoutReservation() =
     unsafeRun {
       for {
         latch   <- Promise.make[Nothing, Unit]
         managed = ZManaged.make(latch.await)(_ => ZIO.unit)
-        res     <- managed.timeout(Duration.Zero).use(res => ZIO.succeed(res must_=== (None)))
+        res     <- managed.timeout(Duration.Zero).use(res => ZIO.succeed(res == None))
         _       <- latch.succeed(())
-      } yield res
+      } yield assert(res)
     }
 
-  private def timeoutAcquisition =
+  private def timeoutAcquisition() =
     unsafeRun {
       for {
         latch   <- Promise.make[Nothing, Unit]
         managed = ZManaged.reserve(Reservation(latch.await, ZIO.unit))
-        res     <- managed.timeout(Duration.Zero).use(res => ZIO.succeed(res must_=== (None)))
+        res     <- managed.timeout(Duration.Zero).use(res => ZIO.succeed(res == None))
         _       <- latch.succeed(())
-      } yield res
+      } yield assert(res)
     }
 
-  private def timeoutRunFinalizers1 =
+  private def timeoutRunFinalizers1() =
     unsafeRun {
       for {
         reserveLatch <- Promise.make[Nothing, Unit]
@@ -458,10 +490,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
         res          <- managed.timeout(Duration.Zero).use(ZIO.succeed)
         _            <- reserveLatch.succeed(())
         _            <- releaseLatch.await
-      } yield res must_=== (None)
+      } yield assert(res == None)
     }
 
-  private def timeoutRunFinalizers2 =
+  private def timeoutRunFinalizers2() =
     unsafeRun {
       for {
         acquireLatch <- Promise.make[Nothing, Unit]
@@ -470,34 +502,34 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
         res          <- managed.timeout(Duration.Zero).use(ZIO.succeed)
         _            <- acquireLatch.succeed(())
         _            <- releaseLatch.await
-      } yield res must_=== (None)
+      } yield assert(res == None)
     }
 
-  private def timed = {
+  private def timed() = {
     val managed = ZManaged(
       clock.sleep(20.milliseconds) *> ZIO.succeed(Reservation(clock.sleep(20.milliseconds), ZIO.unit))
     )
     unsafeRun {
-      managed.timed.use { case (duration, _) => ZIO.succeed(duration must be_>=(40.milliseconds)) }
+      managed.timed.use { case (duration, _) => ZIO.succeed(assert(duration >= 40.milliseconds)) }
     }
   }
 
-  private def foreachOrder = {
+  private def foreachOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.foreach(List(1, 2, 3, 4))(res)
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(1, 2, 3, 4))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(1, 2, 3, 4))))
     }
   }
 
-  private def foreachFinalizers =
+  private def foreachFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreach(List(1, 2, 3, 4))(_ => res))
     }
 
-  def foreachFinalizerOrder = {
+  def foreachFinalizerOrder() = {
     val effects = new mutable.ListBuffer[Int]
     def res(x: Int) =
       ZManaged.make(IO.effectTotal { effects += x; () })(_ => IO.effectTotal { effects += x; () })
@@ -506,95 +538,95 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
 
     unsafeRun(resources.use[Any, Nothing, Unit](_ => IO.unit))
 
-    effects must be_===(List(1, 2, 3, 3, 2, 1))
+    assert(effects == List(1, 2, 3, 3, 2, 1))
   }
 
-  private def foreachParOrder = {
+  private def foreachParOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.foreachPar(List(1, 2, 3, 4))(res)
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(1, 2, 3, 4))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(1, 2, 3, 4))))
     }
   }
 
-  private def foreachParFinalizers =
+  private def foreachParFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreachPar(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParReservePar =
+  private def foreachParReservePar() =
     unsafeRun {
       testReservePar(4, res => ZManaged.foreachPar(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParAcquirePar =
+  private def foreachParAcquirePar() =
     unsafeRun {
       testAcquirePar(4, res => ZManaged.foreachPar(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParNOrder = {
+  private def foreachParNOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.foreachParN(2)(List(1, 2, 3, 4))(res)
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(1, 2, 3, 4))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(1, 2, 3, 4))))
     }
   }
 
-  private def foreachParNFinalizers =
+  private def foreachParNFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreachParN(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParNReservePar =
+  private def foreachParNReservePar() =
     unsafeRun {
       testReservePar(2, res => ZManaged.foreachParN(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParNAcquirePar =
+  private def foreachParNAcquirePar() =
     unsafeRun {
       testAcquirePar(2, res => ZManaged.foreachParN(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreach_Finalizers =
+  private def foreach_Finalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreach_(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachPar_Finalizers =
+  private def foreachPar_Finalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreachPar_(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachPar_ReservePar =
+  private def foreachPar_ReservePar() =
     unsafeRun {
       testReservePar(4, res => ZManaged.foreachPar_(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachPar_AcquirePar =
+  private def foreachPar_AcquirePar() =
     unsafeRun {
       testAcquirePar(4, res => ZManaged.foreachPar_(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParN_Finalizers =
+  private def foreachParN_Finalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.foreachParN_(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParN_ReservePar =
+  private def foreachParN_ReservePar() =
     unsafeRun {
       testReservePar(2, res => ZManaged.foreachParN_(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def foreachParN_AcquirePar =
+  private def foreachParN_AcquirePar() =
     unsafeRun {
       testReservePar(2, res => ZManaged.foreachParN_(2)(List(1, 2, 3, 4))(_ => res))
     }
 
-  private def forkFinalizer = unsafeRun {
+  private def forkFinalizer() = unsafeRun {
     for {
       finalized <- Ref.make(false)
       latch     <- Promise.make[Nothing, Unit]
@@ -603,10 +635,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
             .fork
             .use_(latch.await)
       result <- finalized.get
-    } yield result must_=== true
+    } yield assert(result)
   }
 
-  private def forkAcquisitionIsInterruptible = unsafeRun {
+  private def forkAcquisitionIsInterruptible() = unsafeRun {
     for {
       finalized    <- Ref.make(false)
       acquireLatch <- Promise.make[Nothing, Unit]
@@ -625,115 +657,115 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       _      <- useLatch.await
       _      <- fib.interrupt
       result <- finalized.get
-    } yield result must_=== true
+    } yield assert(result)
   }
 
-  private def mergeAllOrder = {
+  private def mergeAllOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.mergeAll(List(1, 2, 3, 4).map(res))(List[Int]()) { case (acc, a) => a :: acc }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(4, 3, 2, 1))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(4, 3, 2, 1))))
     }
   }
 
-  private def mergeAllFinalizers =
+  private def mergeAllFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.mergeAll(List.fill(4)(res))(()) { case (_, b) => b })
     }
 
-  private def mergeAllParOrder = {
+  private def mergeAllParOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.mergeAllPar(List(1, 2, 3, 4).map(res))(List[Int]()) { case (acc, a) => a :: acc }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(4, 3, 2, 1))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(4, 3, 2, 1))))
     }
   }
 
-  private def mergeAllParFinalizers =
+  private def mergeAllParFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.mergeAllPar(List.fill(4)(res))(()) { case (_, b) => b })
     }
 
-  private def mergeAllParReservePar =
+  private def mergeAllParReservePar() =
     unsafeRun {
       testReservePar(4, res => ZManaged.mergeAllPar(List.fill(4)(res))(()) { case (_, b) => b })
     }
 
-  private def mergeAllParAcquirePar =
+  private def mergeAllParAcquirePar() =
     unsafeRun {
       testAcquirePar(4, res => ZManaged.mergeAllPar(List.fill(4)(res))(()) { case (_, b) => b })
     }
 
-  private def mergeAllParNOrder = {
+  private def mergeAllParNOrder() = {
     def res(int: Int) =
       ZManaged.succeed(int)
 
     val managed = ZManaged.mergeAllParN(2)(List(1, 2, 3, 4).map(res))(List[Int]()) { case (acc, a) => a :: acc }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(4, 3, 2, 1))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(4, 3, 2, 1))))
     }
   }
 
-  private def mergeAllParNFinalizers =
+  private def mergeAllParNFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.mergeAllParN(2)(List.fill(4)(res))(0) { case (a, _) => a })
     }
 
-  private def mergeAllParNReservePar =
+  private def mergeAllParNReservePar() =
     unsafeRun {
       testReservePar(2, res => ZManaged.mergeAllParN(2)(List.fill(4)(res))(0) { case (a, _) => a })
     }
 
-  private def mergeAllParNAcquirePar =
+  private def mergeAllParNAcquirePar() =
     unsafeRun {
       testAcquirePar(2, res => ZManaged.mergeAllParN(2)(List.fill(4)(res))(0) { case (a, _) => a })
     }
 
-  private def reduceAllOrder = {
+  private def reduceAllOrder() = {
     def res(int: Int) =
       ZManaged.succeed(List(int))
 
     val managed = ZManaged.reduceAll(ZManaged.succeed(Nil), List(1, 2, 3, 4).map(res)) { case (a1, a2) => a1 ++ a2 }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(1, 2, 3, 4))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(1, 2, 3, 4))))
     }
   }
 
-  private def reduceAllFinalizers =
+  private def reduceAllFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.reduceAll(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
 
-  private def reduceAllParOrder = {
+  private def reduceAllParOrder() = {
     def res(int: Int) =
       ZManaged.succeed(List(int))
 
     val managed = ZManaged.reduceAllPar(ZManaged.succeed(Nil), List(1, 2, 3, 4).map(res)) { case (a1, a2) => a1 ++ a2 }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(1, 2, 3, 4))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(1, 2, 3, 4))))
     }
   }
 
-  private def reduceAllParFinalizers =
+  private def reduceAllParFinalizers() =
     unsafeRun {
       testFinalizersPar(4, res => ZManaged.reduceAllPar(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
 
-  private def reduceAllParReservePar =
+  private def reduceAllParReservePar() =
     unsafeRun {
       testReservePar(4, res => ZManaged.reduceAllPar(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
 
-  private def reduceAllParAcquirePar =
+  private def reduceAllParAcquirePar() =
     unsafeRun {
       testAcquirePar(4, res => ZManaged.reduceAllPar(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
 
-  private def reduceAllParNOrder = {
+  private def reduceAllParNOrder() = {
     def res(int: Int) =
       ZManaged.succeed(List(int))
 
@@ -741,11 +773,11 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       case (acc, a) => a ++ acc
     }
     unsafeRun {
-      managed.use[Any, Nothing, MatchResult[List[Int]]](res => ZIO.succeed(res must be_===(List(4, 3, 2, 1))))
+      managed.use[Any, Nothing, Unit](res => ZIO.succeed(assert(res == List(4, 3, 2, 1))))
     }
   }
 
-  private def reduceAllParNFinalizers =
+  private def reduceAllParNFinalizers() =
     unsafeRun {
       testFinalizersPar(
         4,
@@ -753,12 +785,12 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       )
     }
 
-  private def reduceAllParNReservePar =
+  private def reduceAllParNReservePar() =
     unsafeRun {
       testReservePar(2, res => ZManaged.reduceAllParN(2)(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
 
-  private def reduceAllParNAcquirePar =
+  private def reduceAllParNAcquirePar() =
     unsafeRun {
       testAcquirePar(2, res => ZManaged.reduceAllParN(2)(ZManaged.succeed(0), List.fill(4)(res)) { case (a, _) => a })
     }
@@ -766,7 +798,7 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
   private def testReservePar[R, E, A](
     n: Int,
     f: ZManaged[Any, Nothing, Unit] => ZManaged[R, E, A]
-  ): ZIO[R, E, MatchResult[Int]] = {
+  ): ZIO[R, E, Unit] = {
     val latch = new CountDownLatch(n)
     for {
       effects      <- Ref.make(0)
@@ -778,13 +810,13 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       _     <- res.use_(ZIO.unit).fork *> ZIO.effectTotal(latch.await())
       count <- effects.get
       _     <- reserveLatch.succeed(())
-    } yield count must be_===(n)
+    } yield assert(count == n)
   }
 
   private def testAcquirePar[R, E](
     n: Int,
     f: ZManaged[Any, Nothing, Unit] => ZManaged[R, E, _]
-  ): ZIO[R, E, MatchResult[Int]] = {
+  ): ZIO[R, E, Unit] = {
     val latch = new CountDownLatch(n)
     for {
       effects      <- Ref.make(0)
@@ -796,22 +828,22 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
       _     <- res.use_(ZIO.unit).fork *> ZIO.effectTotal(latch.await())
       count <- effects.get
       _     <- reserveLatch.succeed(())
-    } yield count must be_===(n)
+    } yield assert(count == n)
   }
 
   private def testFinalizersPar[R, E](
     n: Int,
     f: ZManaged[Any, Nothing, Unit] => ZManaged[R, E, _]
-  ): ZIO[R, E, MatchResult[Int]] =
+  ): ZIO[R, E, Unit] =
     for {
       releases <- Ref.make[Int](0)
       baseRes  = ZManaged.make(ZIO.succeed(()))(_ => releases.update(_ + 1))
       res      = f(baseRes)
       _        <- res.use_(ZIO.unit)
       count    <- releases.get
-    } yield count must be_===(n)
+    } yield assert(count == n)
 
-  private def onExit = unsafeRun {
+  private def onExit() = unsafeRun {
     for {
       finalizersRef <- Ref.make[List[String]](Nil)
       resultRef     <- Ref.make[Option[Exit[Nothing, String]]](None)
@@ -821,10 +853,10 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
             .use_(ZIO.unit)
       finalizers <- finalizersRef.get
       result     <- resultRef.get
-    } yield (finalizers must_=== List("Second", "First")) and (result must_=== Some(Exit.succeed("42")))
+    } yield assert(finalizers == List("Second", "First"), result == Some(Exit.succeed("42")))
   }
 
-  private def onExitFirst = unsafeRun {
+  private def onExitFirst() = unsafeRun {
     for {
       finalizersRef <- Ref.make[List[String]](Nil)
       resultRef     <- Ref.make[Option[Exit[Nothing, String]]](None)
@@ -834,6 +866,6 @@ class ZManagedSpec(implicit ee: org.specs2.concurrent.ExecutionEnv) extends Test
             .use_(ZIO.unit)
       finalizers <- finalizersRef.get
       result     <- resultRef.get
-    } yield (finalizers must_=== List("First", "Second")) and (result must_=== Some(Exit.succeed("42")))
+    } yield assert(finalizers == List("First", "Second"), result == Some(Exit.succeed("42")))
   }
 }

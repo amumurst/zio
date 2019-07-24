@@ -1,26 +1,28 @@
 package zio
 
+import utest._
+
 @deprecated("use FiberRef", "1.0.0")
-class FiberLocalSpec extends BaseCrossPlatformSpec {
+object FiberLocalSpec extends BaseCrossPlatformSpec2 with UtestScalacheckExtension {
 
-  def is =
-    "FiberLocalSpec".title ^ s2"""
-    Create a new FiberLocal and
-      retrieve fiber-local data that has been set          $e1
-      empty fiber-local data                               $e2
-      automatically sets and frees data                    $e3
-      fiber-local data cannot be accessed by other fibers  $e4
-      setting does not overwrite existing fiber-local data $e5
-    """
+  override def tests: Tests = Tests {
+    test("Create a new FiberLocal and") {
+      test("retrieve fiber -local data that has been set") - unsafeRun(e1)
+      test("empty fiber -local data") - unsafeRun(e2)
+      test("automatically sets and frees data") - unsafeRun(e3)
+      test("fiber - local data cannot be accessed by other fibers") - unsafeRun(e4)
+      test("setting does not overwrite existing fiber -local data") - unsafeRun(e5)
+    }
+  }
 
-  def e1 =
+  def e1() =
     for {
       local <- FiberLocal.make[Int]
       _     <- local.set(10)
       v     <- local.get
     } yield v must_=== Some(10)
 
-  def e2 =
+  def e2() =
     for {
       local <- FiberLocal.make[Int]
       _     <- local.set(10)
@@ -28,23 +30,23 @@ class FiberLocalSpec extends BaseCrossPlatformSpec {
       v     <- local.get
     } yield v must_=== None
 
-  def e3 =
+  def e3() =
     for {
       local <- FiberLocal.make[Int]
       v1    <- local.locally(10)(local.get)
       v2    <- local.get
-    } yield (v1 must_=== Some(10)) and (v2 must_=== None)
+    } yield assert(v1 == Some(10), v2 == None)
 
-  def e4 =
+  def e4() =
     for {
       local <- FiberLocal.make[Int]
       p     <- Promise.make[Nothing, Unit]
       _     <- (local.set(10) *> p.succeed(())).fork
       _     <- p.await
       v     <- local.get
-    } yield (v must_=== None)
+    } yield assert(v == None)
 
-  def e5 =
+  def e5() =
     for {
       local <- FiberLocal.make[Int]
       p     <- Promise.make[Nothing, Unit]
@@ -53,6 +55,6 @@ class FiberLocalSpec extends BaseCrossPlatformSpec {
       _     <- p.succeed(())
       v1    <- f.join
       v2    <- local.get
-    } yield (v1 must_=== Some(10)) and (v2 must_== Some(20))
+    } yield assert(v1 == Some(10), v2 == Some(20))
 
 }

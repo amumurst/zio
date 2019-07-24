@@ -1,7 +1,7 @@
 package zio.internal
 
 import utest._
-import zio.SerializableSpec._
+import zio.SerializableSpecMethods._
 
 /*
  * This spec is just a sanity check and tests RingBuffer correctness

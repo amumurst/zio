@@ -1,54 +1,58 @@
 package zio
 
-import org.specs2.{ ScalaCheck, Specification }
+import utest._
+import org.scalacheck.Prop.forAll
 
-class ExitSpec extends Specification with ScalaCheck {
+object ExitSpec extends TestSuite with UtestScalacheckExtension {
   import Cause._
   import ArbitraryCause._
 
-  def is = "ExitSpec".title ^ s2"""
-    Cause
-      `Cause#died` and `Cause#stripFailures` are consistent $e1
-      `Cause.equals` is symmetric $e2
-      `Cause.equals` and `Cause.hashCode` satisfy the contract $e3
-    Then 
-      `Then.equals` satisfies associativity $e4
-      `Then.equals` satisfies distributivity $e5
-    Both
-      `Both.equals` satisfies associativity $e6
-      `Both.equals` satisfies commutativity $e7
-      """
-
-  private def e1 = prop { c: Cause[String] =>
-    if (c.died) c.stripFailures must beSome
-    else c.stripFailures must beNone
+  override def tests: Tests = Tests {
+    test("Cause") {
+      test("`Cause#died` and `Cause#stripFailures` are consistent") - propTest(e1)
+      test("`Cause.equals` is symmetric") - propTest(e2)
+      test("`Cause.equals` and `Cause.hashCode` satisfy the contract") - propTest(e3)
+    }
+    test("Then") {
+      test("`Then.equals` satisfies associativity") - propTest(e4)
+      test("`Then.equals` satisfies distributivity") - propTest(e5)
+    }
+    test("Both") {
+      test("`Both.equals` satisfies associativity") - propTest(e6)
+      test("`Both.equals` satisfies commutativity") - propTest(e7)
+    }
   }
 
-  private def e2 = prop { (a: Cause[String], b: Cause[String]) =>
-    (a == b) must_== (b == a)
+  private def e1() = forAll { c: Cause[String] =>
+    if (c.died) c.stripFailures.isDefined
+    else c.stripFailures.isEmpty
   }
 
-  private def e3 =
-    prop { (a: Cause[String], b: Cause[String]) =>
-      (a == b) ==> (a.hashCode must_== (b.hashCode))
-    }.set(minTestsOk = 10, maxDiscardRatio = 99.0f)
-
-  private def e4 = prop { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
-    Then(Then(a, b), c) must_== Then(a, Then(b, c))
-    Then(a, Then(b, c)) must_== Then(Then(a, b), c)
+  private def e2() = forAll { (a: Cause[String], b: Cause[String]) =>
+    (a == b) == (b == a)
   }
 
-  private def e5 = prop { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
-    Then(a, Both(b, c)) must_== Both(Then(a, b), Then(a, c))
-    Then(Both(a, b), c) must_== Both(Then(a, c), Then(b, c))
+  private def e3() =
+    forAll { (a: Cause[String], b: Cause[String]) =>
+      if (a == b) a.hashCode == b.hashCode else true
+    } //.set(minTestsOk = 10, maxDiscardRatio = 99.0f)
+
+  private def e4() = forAll { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
+    (Then(Then(a, b), c) == Then(a, Then(b, c))) &&
+    (Then(a, Then(b, c)) == Then(Then(a, b), c))
   }
 
-  private def e6 = prop { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
-    Both(Both(a, b), c) must_== Both(a, Both(b, c))
-    Both(Both(a, b), c) must_== Both(a, Both(b, c))
+  private def e5() = forAll { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
+    (Then(a, Both(b, c)) == Both(Then(a, b), Then(a, c))) &&
+    (Then(Both(a, b), c) == Both(Then(a, c), Then(b, c)))
   }
 
-  private def e7 = prop { (a: Cause[String], b: Cause[String]) =>
-    Both(a, b) must_== Both(b, a)
+  private def e6() = forAll { (a: Cause[String], b: Cause[String], c: Cause[String]) =>
+    (Both(Both(a, b), c) == Both(a, Both(b, c))) &&
+    (Both(Both(a, b), c) == Both(a, Both(b, c)))
+  }
+
+  private def e7() = forAll { (a: Cause[String], b: Cause[String]) =>
+    Both(a, b) == Both(b, a)
   }
 }
